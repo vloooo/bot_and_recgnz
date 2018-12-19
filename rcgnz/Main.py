@@ -28,10 +28,10 @@ def main(image):
     #     print("\nerror: CNN traning was not successful\n")  # show error message
     #     return  # and exit program
 
-    resp = urllib.request.urlopen(image)
-    image = np.asarray(bytearray(resp.read()), dtype="uint8")
-    imgOriginalScene = cv2.imdecode(image, cv2.IMREAD_COLOR)
-    # imgOriginalScene = cv2.imread(image)  # open image
+    # resp = urllib.request.urlopen(image)
+    # image = np.asarray(bytearray(resp.read()), dtype="uint8")
+    # imgOriginalScene = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    imgOriginalScene = cv2.imread(image)  # open image
     # plt.imshow(imgOriginalScene)
 
     cv2.imshow("cropped", imgOriginalScene)

@@ -70,7 +70,8 @@ def main(image):
 
     if len(listOfPossiblePlates) == 0:  # if no plates were found
         print("\nno license plates were detected\n")  # inform user no plates were found
-        response = 'lll'
+        response = 'AA00AAA'
+        cv2.destroyAllWindows()
         return response, imgOriginalScene
     else:  # else
         # if we get in here list of possible plates has at leat one plate
@@ -81,15 +82,13 @@ def main(image):
         # suppose the plate with the most recognized chars (the first plate in sorted by string length descending order) is the actual plate
         licPlate = listOfPossiblePlates[0]
 
-        if showSteps == True:
-            Image.fromarray(licPlate.imgPlate).show()  # show crop of plate and threshold of plate
 
         if len(licPlate.strChars) == 0:  # if no chars were found in the plate
             print("\nno characters were detected\n\n")  # show message
-            return ' ', imgOriginalScene  # and exit program
+            return 'AA00AAA', imgOriginalScene  # and exit program
         # end if
 
-        drawRedRectangleAroundPlate(imgOriginalScene, licPlate)  # draw red rectangle around plate
+        # drawRedRectangleAroundPlate(imgOriginalScene, licPlate)  # draw red rectangle around plate
         """
 		# Uncomment this if want to check for individual plate
         print("\nlicense plate read from ", image," :",licPlate.strChars,"\n")
@@ -100,15 +99,19 @@ def main(image):
         # writeLicensePlateCharsOnImage(imgOriginalScene, licPlate)  # write license plate text on the image
         # cv2.imwrite("/home/user/PycharmProjects/plates/cars/imgOriginalScene" + str(counter) + ".png",
         #             imgOriginalScene)  # write image out to file
+        """
         if showSteps == True:
             writeLicensePlateCharsOnImage(imgOriginalScene, licPlate)  # write license plate text on the image
+        
 
             Image.fromarray(imgOriginalScene).show()  # re-show scene image
 
             cv2.imwrite("/home/user/PycharmProjects/plates/cars/imgOriginalScene" + str(counter) + ".png", imgOriginalScene)  # write image out to file
             input('Press any key to continue...')  # hold windows open until user presses a key
-    cv2.destroyAllWindows()
-    return licPlate.strChars, licPlate.imgPlate
+        """
+        licPlate.strChars = validate_for_britain(licPlate.strChars)
+        cv2.destroyAllWindows()
+        return licPlate.strChars, licPlate.imgPlate
 
 
 ###################################################################################################

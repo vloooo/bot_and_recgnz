@@ -19,7 +19,7 @@ add_pers_url = main_url + 'add_person'
 host = '0.0.0.0'
 port = 5000
 adding_filds = ['number_of_calls', 'call_hour', 'cnvrs_key', 'pst', 'ngt', 'again_key', 'first_ques',
-                'stage', 'phone_for_offer', 'mileage', 'serv_hist','city']
+                'stage', 'phone_for_offer', 'mileage', 'serv_hist', 'city']
 
 flds = ['number_of_calls', 'call_hour', 'cnvrs_key', 'pst', 'ngt', 'again_key', 'first_ques',
         'stage', 'phone_for_offer', 'mileage', 'serv_hist','city', 'reg_num', 'phone']

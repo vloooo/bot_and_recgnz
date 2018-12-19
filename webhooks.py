@@ -27,7 +27,6 @@ model.compile(optimizer=RMSprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.005), 
               metrics=['accuracy'])
 graph = tf.get_default_graph()
 
-
 warnings.filterwarnings("ignore")
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -133,6 +132,8 @@ def find_plate(client_speech, phone):
             found = True
 
     return found
+
+
 #######################################################################################################################
 
 
@@ -322,6 +323,8 @@ def get_stage_values(form, lack_ngt_text=True):
         return phone, undrstnd_newcall_recall(phone=phone, form=form), undrstnd_newques_reask(phone=phone)
     else:
         return phone, undrstnd_newcall_recall(phone=phone, form=form)
+
+
 ###############################################################################################################
 
 
@@ -652,6 +655,8 @@ def question8():
         twiml_xml = collect_end_conversation(phrases.u_can_vld_it)
 
     return str(twiml_xml)  # twiML в конце перевожу в строку, потому что так было в примерчике
+
+
 ########################################################################################################
 
 
@@ -685,7 +690,7 @@ def send_inf(phone):
 
 @app.route('/receiver', methods=['GET', 'POST'])
 def receiver():
-    print(request.get_json())
+    print(request.form)
 
 
 def initiate_call(twiml, phone):
@@ -715,7 +720,7 @@ def make_calls():
     совершает звонок, если имеются подходящие записи
     """
 
-    filtered_for_recall = out[out.cnvrs_key == 1][abs(out.call_hour - datetime.utcnow().hour) > config.recall_step]\
+    filtered_for_recall = out[out.cnvrs_key == 1][abs(out.call_hour - datetime.utcnow().hour) > config.recall_step] \
         [out.number_of_calls < config.finaly_number_of_calls]
     candidates_to_call = pd.concat([out[out.cnvrs_key == 0], filtered_for_recall])
 
@@ -736,6 +741,8 @@ def make_calls():
                                                           hints=phrases.pst_hint, phone=phone, add_step=False)
                 initiate_call(twiml=twiml_xml, phone=phone)
             number_of_client = int(config.number_of_calls_per_time / 100 * config.percent_of_new)
+
+
 ######################################################################################################################
 
 
@@ -747,10 +754,13 @@ def add_person():
     global out
     if request.method == "POST":
         json = request.get_json()
-        values = [[json[k]] for k in config.flds]
-        values = np.array(values).T
-        dt = pd.DataFrame(data=values, columns=config.flds)
+        print(json)
+        # values = [[json[k]] for k in config.flds]
+        # values = np.array(values).T
+        # dt = pd.DataFrame(data=values, columns=config.flds)
+        dt = pd.DataFrame.from_dict(json)
         out = pd.concat([out, dt])
+        print('\n\n\n\n\n\n\n', out)
 
 
 @app.route('/snd', methods=['POST', 'GET'])
@@ -761,27 +771,51 @@ def snd():
 
 @app.route('/extract_num', methods=['POST', 'GET'])
 def extract_num():
-    photo_url = request.get_json()['photo_url']
+    # photo_url = request.get_json()['photo_url']
+
+    xls = pd.ExcelFile(request.files['pic'])
+
+    df = xls.parse(xls.sheet_names[0],  converters={"phone": str})
+    print(df)
+    req = df.to_dict()
+    print(req)
+    req['reg_num'] = {}
 
     global graph
     with graph.as_default():
-        c, _ = Main.main(photo_url)
-        c = Main.validate_for_britain(c)
-    req = request.get_json()
+        for j in range(len(req['phone'])):
+            req['reg_num'][j], _ = Main.main(req['photo_url'][j])
 
     for i in range(len(config.adding_filds)):
         if i < 3:
-            req[config.adding_filds[i]] = 0
+            req = add_field_to_dict(0, i, req)
+
         elif i < 7:
-            req[config.adding_filds[i]] = False
+            req = add_field_to_dict(False, i, req)
+
         elif i == 7:
-            req[config.adding_filds[i]] = 1
+            req = add_field_to_dict(1, i, req)
+
         else:
-            req[config.adding_filds[i]] = None
-    req['reg_num'] = c
+            req = add_field_to_dict(None, i, req)
+
     del req['photo_url']
-    # print(req)
+    print(req)
     requests.post(config.add_pers_url, json=req)
+
+
+def add_field_to_dict(value, pos_field, req):
+    req[config.adding_filds[pos_field]] = {}
+    for j in range(len(req['phone'])):
+        req[config.adding_filds[pos_field]][j] = value
+    return req
+
+@app.route('/i')
+def index():
+    return """<form action="/extract_num" method="post" enctype="multipart/form-data">
+                <input type="file" name="pic">
+                <input type="submit" name="submit">
+                </form>"""
 
 
 if __name__ == '__main__':

@@ -1,9 +1,12 @@
+import cv2
+import numpy
 import requests
 import config
 import tensorflow as tf
 import Main
 from keras.models import load_model
 from keras.optimizers import RMSprop
+import pandas as pd
 
 adding_filds = ['number_of_calls', 'call_hour', 'cnvrs_key', 'pst', 'ngt', 'again_key', 'first_ques',
                 'stage', 'phone_for_offer', 'mileage', 'serv_hist','city']
@@ -50,6 +53,34 @@ def extract_num():
     requests.post(config.add_pers_url, json=req)
     # return c
 
+
+@app.route('/receiver', methods=['GET', 'POST'])
+def receiver():
+
+    print(request.files)
+    print(request.files['pic'])
+    filestr = request.files['pic'].read()
+    # print(filestr)
+    xls = pd.ExcelFile(request.files['pic'])
+
+    df = xls.parse(xls.sheet_names[0])
+    print(df)
+
+    return """<form action="/receiver" method="post" enctype="multipart/form-data">
+                <input type="file" name="pic">
+                <input type="submit" name="submit">
+                </form>"""
+
+@app.route('/')
+def index():
+    return """<form action="/receiver" method="post" enctype="multipart/form-data">
+                <input type="file" name="pic">
+                <input type="submit" name="submit">
+                </form>"""
+
+
+if __name__ == '__main__':
+    app.run(host=config.host, port=config.port)
 
 if __name__ == "__main__":
     app.run()

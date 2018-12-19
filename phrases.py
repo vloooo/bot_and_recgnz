@@ -19,11 +19,11 @@ greeting = 'Hi, I am phoning about your car, is it still available?'
 ######################################################################################################################
 pst_hint = ('perfect thanks, two hours that\'s great, thanks for the offer, ok, accept your offer, ok that\'s great, '
             'accept, why not, yes please, cool, how much, whats the offer, yes, сorrect, affirmative, '
-            'still available, thank you for contact me, its free, precisely, you may well say so, just so,'
+            'still available, thank you for contact me, its free, precisely, you may well say so, just so, '
             'you are right, yeh, yep, exactly, it is still available, have not paid, i still have, no, '
             'not for me, i do not think so, fuck off, piss off, that\'s not my, i do not own, that\'s not correct, '
             'that\'s not, is wrong, that\'s not, i live in, where did you get, why do you need to know that, '
-            'that is not,do not know, i have lost, not interested, do not, changed my mind, no thanks')
+            'that is not, do not know, i have lost, not interested, do not, changed my mind, no thanks')
 
 reg_num = ('my registration number is, registration number, my number, zero, one, two, three, four, five, '
            'six, seven, eight, nine, ten, eleven, twelve, thirteen, fourteen, fifteen, sixteen, seventeen, '
@@ -43,6 +43,7 @@ city = ("i live in, my city is, Edinburgh, Bath, Bolton, Birmingham, Bristol, Gl
 
 serv_hist = '1, 2, 3, full service history, part service history, missing service history'
 ######################################################################################################################
+
 #                                                   standart stage phrase
 ######################################################################################################################
 seventh_stage = ('that\'s my questions completed. In the next few minutes you will receive an offer. '
@@ -55,3 +56,6 @@ fivth_stage = 'Will it be convenient for you to get an offer for this phone numb
 
 first_stage = 'my name is Julia. Would you be interested in us making you an offer for your car?'
 ######################################################################################################################
+
+stage_content = ['car available', 'would you interested', 'reg_num', 'mileage', 'city', 'mobile', 'serv_hist',
+                 'you satisfied']

@@ -45,8 +45,8 @@ app = Flask(__name__)  # работа с вебом
 out = pd.DataFrame(
     {"reg_num": ['AS 123 SD', None, None], "mileage": ['1500', None, None], "city": ['London', None, None],
      "phone": ["+380938482501", "+55555555555", "+3333333333333"], "phone_for_offer": [None, None, None],
-     "serv_hist": [None, None, None], 'again_key': [False, False, False], 'stage': [2, 1, 1],
-     'pst': [False, False, False], 'ngt': [False, False, False], 'cnvrs_key': [1, 2, 2], 'number_of_calls': [2, 1, 3],
+     "serv_hist": [None, None, None], 'again_key': [False, False, False], 'stage': [1, 1, 1],
+     'pst': [False, False, False], 'ngt': [False, False, False], 'cnvrs_key': [0, 2, 2], 'number_of_calls': [0, 1, 3],
      'first_ques': [True, True, True], 'call_hour': [0, 0, 0]})
 
 
@@ -112,7 +112,7 @@ def find_plate(client_speech, phone):
     plate_format_2 = re.findall(r'[a-z][0-9]{2}[a-z]{3}', clue_str)
 
     if plate_format_1:
-        out['registration number'][out['phone'] == phone] = plate_format_1[0].upper()
+        out['reg_num'][out['phone'] == phone] = plate_format_1[0].upper()
         found = True
     elif plate_format_2:
         plate_format = re.findall(r'[a-z][0-9]{2}[a-z]{3}', clue_str)
@@ -122,12 +122,12 @@ def find_plate(client_speech, phone):
         if pos_plate == 0 or (
                 pos_plate > 2 and client_speech[pos_plate - 3] != ' ' and client_speech[pos_plate - 1] == ' '):
             plate_format_2 = re.findall(r'[a-z][0-9]{2}[a-z]{3}', clue_str)
-            out['registration number'][out['phone'] == phone] = plate_format_2[0].upper()
+            out['reg_num'][out['phone'] == phone] = plate_format_2[0].upper()
             found = True
 
         elif client_speech[pos_plate - 1] != ' ' or pos_plate - 3 == -1 or client_speech[pos_plate - 3] == ' ':
             plate_format_2 = re.findall(r'[a-z]{2}[0-9]{2}[a-z]{3}', clue_str)
-            out['registration number'][out['phone'] == phone] = plate_format_2[0].upper()
+            out['reg_num'][out['phone'] == phone] = plate_format_2[0].upper()
             found = True
 
     return found
@@ -313,7 +313,7 @@ def undrstnd_newques_reask(phone):
 
 def write_user_answer(text, phone):
     with open(phone, "a") as f:
-        f.write("\n" + text + "\n")
+        f.write("\n" + phrases.stage_content[out[out.phone == phone]['stage'][0] - 1] + '\n' + text + "\n\n")
 
 
 def get_stage_values(form, lack_ngt_text=True):
@@ -387,7 +387,7 @@ def question2():
     # twilio выбор ответа
     return choose_rigth_answer(client_speech=client_speech, negative_text=phrases.sorry_4_bothr,
                                positive_text='Can I confirm your vehicle registration number is ' + str(
-                                   out[out.phone == phone]['registration number'][0]) + '?',
+                                   out[out.phone == phone]['reg_num'][0]) + '?',
                                positive_hint=phrases.pst_hint, phone=phone, end_call=True, repeat_hint=phrases.pst_hint)
 
 
@@ -423,7 +423,7 @@ def question3_1():
 
     client_speech = request.form.get('SpeechResult')
     phone = request.form.get('To')
-    write_user_answer(text=client_speech, phone=phone)
+    write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
     _, neg = get_pos_neg(client_speech=client_speech, phone=phone)
     found = find_plate(client_speech=client_speech, phone=phone)
@@ -433,7 +433,7 @@ def question3_1():
 
         twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints=phrases.pst_hint,
                                               text='Can I validate, your vehicle registration number is ' +
-                                                   str(out['registration number'][out.phone == phone][0]) + '?')
+                                                   str(out['reg_num'][out.phone == phone][0]) + '?')
 
     elif neg:
         set_convrs_key(phone=phone, key=2)
@@ -478,7 +478,7 @@ def question4_1():
 
     client_speech = request.form.get('SpeechResult')
     phone = request.form.get('To')
-    write_user_answer(text=client_speech, phone=phone)
+    write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
     _, neg = get_pos_neg(client_speech=client_speech, phone=phone)
     found = find_mileage(client_speech=client_speech, phone=phone)
@@ -530,7 +530,7 @@ def question5_1():
     global out
     client_speech = request.form.get('SpeechResult')
     phone = request.form.get('To')
-    write_user_answer(text=client_speech, phone=phone)
+    write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
     _, neg = get_pos_neg(client_speech=client_speech, phone=phone)
     found = find_city(client_speech=client_speech, phone=phone)
@@ -567,7 +567,7 @@ def question6():
 
     # при одобрении задаётся следующий вопрос
     if pos:
-        out['phone for offer'][out.phone == phone] = phone
+        out['phone_for_offer'][out.phone == phone] = phone
         twiml_xml = collect_2gathers_response(text=phrases.sixth_stage, phone=phone, hints=phrases.serv_hist)
 
     # при отрицании прошу ввести номер телефона
@@ -594,10 +594,10 @@ def question6_1():
 
     client_inp = request.form.get('Digits')  # получаю введённый с клавиатуры мобильный
     phone = request.form.get('To')
-    write_user_answer(text=client_inp, phone=phone)
+    write_user_answer(text='dictate: ' + client_inp, phone=phone)
 
     if len(client_inp) == 10:
-        out['phone for offer'][out.phone == phone] = "+" + client_inp
+        out['phone_for_offer'][out.phone == phone] = "+" + client_inp
         twiml_xml = collect_2gathers_response(text=phrases.sixth_stage, phone=phone, hints=phrases.serv_hist)
 
     else:
@@ -623,7 +623,7 @@ def question7():
     else:
         client_speech = request.form.get('SpeechResult')
         found = find_service_hist(client_speech, phone)
-        write_user_answer(text=client_speech, phone=phone)
+        write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
     # если найдено одно из допустимых значений сервисной истории --> следующий вопрос
     if found:
@@ -645,7 +645,10 @@ def question8():
      обрабатывается вопрос: вы примите оффер?
      бот произносит прощание, разговор кончается
     """
-    pos, _ = get_pos_neg(client_speech=request.form.get('SpeechResult'), phone=request.form.get('To'))
+    client_speech = request.form.get('SpeechResult')
+    phone = request.form.get('To')
+    pos, _ = get_pos_neg(client_speech=client_speech, phone=phone)
+    write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
     if pos:
         twiml_xml = collect_end_conversation(phrases.bye)

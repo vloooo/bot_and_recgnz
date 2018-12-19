@@ -194,9 +194,10 @@ def detectCharsInPlates(listOfPossiblePlates):
             cv2.drawContours(imgContours, contours, -1, Main.SCALAR_WHITE)
             # imgContours = Image.fromarray(imgContours,'RGB')
             # imgContours.show()
-            
+            """
             cv2.imshow("The_Longest_list_of_matching_chars", imgContours)
             cv2.waitKey(0)
+            """
         # end if # show steps #####################################################################
 
         possiblePlate.strChars = recognizeCharsInPlate(possiblePlate.imgThreshForRcgnz, longestListOfMatchingCharsInPlate)
@@ -446,9 +447,10 @@ def recognizeCharsInPlate(imgThresh, listOfMatchingChars):
 
 
         imgROIResized = cv2.resize(imgROI, (RESIZED_CHAR_IMAGE_WIDTH, RESIZED_CHAR_IMAGE_HEIGHT), interpolation=cv2.INTER_LINEAR)           # resize image, this is necessary for char recognition
-
+        """
         cv2.imshow('letter', imgROI)
         cv2.waitKey(0)
+        """
 
 
         """

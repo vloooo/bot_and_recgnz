@@ -105,8 +105,10 @@ def preprocessS(imgOriginal):
 
 
     # im= cv2.fastNlMeansDenoising(imgBl, h=1, templateWindowSize=3, searchWindowSize=3)
+    """
     cv2.imshow('plate', im)
     cv2.waitKey(0)
+    """
     imgThresh = half_thresh(im)
 
 
@@ -300,9 +302,10 @@ def preprocessS(imgOriginal):
     # _, contours, hierarchy = cv2.findContours(im, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # im = np.zeros([img.shape[0], img.shape[1], 3])
 
-
+    '''
     cv2.imshow('Erod', imgThresh)
     cv2.waitKey(0)
+    '''
     return imgGrayscale, imgThresh, imgForRcgnz
 
 

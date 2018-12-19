@@ -54,10 +54,11 @@ def detectPlatesInScene(imgOriginalScene):
 
         for possibleChar in listOfPossibleCharsInScene:
             contours.append(possibleChar.contour)
-
+        """
         cv2.drawContours(imgContours, contours, -1, Main.SCALAR_WHITE)
         cv2.imshow('ll', imgContours)
         cv2.waitKey(0)
+        """
         # This is for the boxing of all the contours
         """
         for possibleChar in listOfPossibleCharsInScene:
@@ -313,7 +314,8 @@ def validateChars(img, listOfChars):
                     listToVld.append(k)
                     # break
                     cv2.drawContours(im, contours, i, Main.SCALAR_YELLOW)
-
+    """
     cv2.imshow('lap2', im)
     cv2.waitKey(0)
+    """
     return listToVld

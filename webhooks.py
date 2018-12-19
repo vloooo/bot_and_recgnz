@@ -11,7 +11,6 @@ from twilio.twiml.voice_response import VoiceResponse, Gather
 from urllib.parse import urlencode
 import phrases
 import ents
-import numpy as np
 import time
 import requests
 import config
@@ -754,13 +753,10 @@ def add_person():
     global out
     if request.method == "POST":
         json = request.get_json()
-        print(json)
-        # values = [[json[k]] for k in config.flds]
-        # values = np.array(values).T
-        # dt = pd.DataFrame(data=values, columns=config.flds)
         dt = pd.DataFrame.from_dict(json)
-        out = pd.concat([out, dt])
-        print('\n\n\n\n\n\n\n', out)
+        out = pd.concat([out, dt], ignore_index=True)
+        print(out)
+    return ""
 
 
 @app.route('/snd', methods=['POST', 'GET'])
@@ -771,17 +767,15 @@ def snd():
 
 @app.route('/extract_num', methods=['POST', 'GET'])
 def extract_num():
-    # photo_url = request.get_json()['photo_url']
-
     xls = pd.ExcelFile(request.files['pic'])
-
     df = xls.parse(xls.sheet_names[0],  converters={"phone": str})
-    print(df)
+
     req = df.to_dict()
-    print(req)
+
     req['reg_num'] = {}
 
     global graph
+
     with graph.as_default():
         for j in range(len(req['phone'])):
             req['reg_num'][j], _ = Main.main(req['photo_url'][j])
@@ -800,8 +794,8 @@ def extract_num():
             req = add_field_to_dict(None, i, req)
 
     del req['photo_url']
-    print(req)
     requests.post(config.add_pers_url, json=req)
+    return "SUCCESS"
 
 
 def add_field_to_dict(value, pos_field, req):
@@ -809,6 +803,7 @@ def add_field_to_dict(value, pos_field, req):
     for j in range(len(req['phone'])):
         req[config.adding_filds[pos_field]][j] = value
     return req
+
 
 @app.route('/i')
 def index():

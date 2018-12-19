@@ -33,13 +33,16 @@ def main(image):
     imgOriginalScene = cv2.imdecode(image, cv2.IMREAD_COLOR)
     # imgOriginalScene = cv2.imread(image)  # open image
     # plt.imshow(imgOriginalScene)
-
+    '''
     cv2.imshow("cropped", imgOriginalScene)
     cv2.waitKey(0)
+    '''
     h, w = imgOriginalScene.shape[:2]
     crop_img = imgOriginalScene[int(h / 100 *40): h - 40, 40: w - 40]
+    '''
     cv2.imshow("cropped", crop_img)
     cv2.waitKey(0)
+    '''
     # imoo = imgOriginalScene.copy()
     imgOriginalScene = crop_img
 
@@ -51,9 +54,6 @@ def main(image):
 
     imgOriginalScene = cv2.resize(imgOriginalScene, (0, 0), fx=1.4, fy=1.4, interpolation=cv2.INTER_CUBIC)
 
-    # imgOriginalScene = cv2.fastNlMeansDenoisingColored(imgOriginalScene,None,10,10,7,21)
-
-    # imgOriginal = imgOriginalScene.copy()
 
     if imgOriginalScene is None:  # if image was not read successfully
         print("\nerror: image not read from file \n\n")  # print error message to std out
@@ -88,27 +88,7 @@ def main(image):
             return 'AA00AAA', imgOriginalScene  # and exit program
         # end if
 
-        # drawRedRectangleAroundPlate(imgOriginalScene, licPlate)  # draw red rectangle around plate
-        """
-		# Uncomment this if want to check for individual plate
-        print("\nlicense plate read from ", image," :",licPlate.strChars,"\n")
-        print("----------------------------------------")
-		"""
-        # global counter
-        # counter += 1
-        # writeLicensePlateCharsOnImage(imgOriginalScene, licPlate)  # write license plate text on the image
-        # cv2.imwrite("/home/user/PycharmProjects/plates/cars/imgOriginalScene" + str(counter) + ".png",
-        #             imgOriginalScene)  # write image out to file
-        """
-        if showSteps == True:
-            writeLicensePlateCharsOnImage(imgOriginalScene, licPlate)  # write license plate text on the image
-        
 
-            Image.fromarray(imgOriginalScene).show()  # re-show scene image
-
-            cv2.imwrite("/home/user/PycharmProjects/plates/cars/imgOriginalScene" + str(counter) + ".png", imgOriginalScene)  # write image out to file
-            input('Press any key to continue...')  # hold windows open until user presses a key
-        """
         licPlate.strChars = validate_for_britain(licPlate.strChars)
         cv2.destroyAllWindows()
         return licPlate.strChars, licPlate.imgPlate

@@ -16,14 +16,27 @@ import time
 import requests
 import config
 from datetime import datetime
-import json
 from word2number import w2n
+import tensorflow as tf
+import Main
+from keras.models import load_model
+from keras.optimizers import RMSprop
+
+adding_filds = ['number_of_calls', 'call_hour', 'cnvrs_key', 'pst', 'ngt', 'again_key', 'first_ques',
+                'stage', 'phone_for_offer', 'mileage', 'serv_hist','city']
+
+flds = ['number_of_calls', 'call_hour', 'cnvrs_key', 'pst', 'ngt', 'again_key', 'first_ques',
+        'stage', 'phone_for_offer', 'mileage', 'serv_hist','city', 'reg_num', 'phone']
+model = load_model('char-reg.h5')
+model.compile(optimizer=RMSprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.005), loss='categorical_crossentropy',
+              metrics=['accuracy'])
+graph = tf.get_default_graph()
 
 
 warnings.filterwarnings("ignore")
-# pd.set_option('display.max_rows', 500)
-# pd.set_option('display.max_columns', 500)
-# pd.set_option('display.width', 1000)
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 
 # Your Account Sid and Auth Token from twilio.com/console
 client = Client(config.account_sid, config.auth_token)
@@ -37,9 +50,9 @@ nlp = spacy.load('en_core_web_md')
 app = Flask(__name__)  # работа с вебом
 
 out = pd.DataFrame(
-    {"registration number": ['AS 123 SD', None, None], "mileage": ['1500', None, None], "city": ['London', None, None],
-     "phone": ["+380938482501", "+55555555555", "+3333333333333"], "phone for offer": [None, None, None],
-     "service history": [None, None, None], 'again_key': [False, False, False], 'stage': [2, 1, 1],
+    {"reg_num": ['AS 123 SD', None, None], "mileage": ['1500', None, None], "city": ['London', None, None],
+     "phone": ["+380938482501", "+55555555555", "+3333333333333"], "phone_for_offer": [None, None, None],
+     "serv_hist": [None, None, None], 'again_key': [False, False, False], 'stage': [2, 1, 1],
      'pst': [False, False, False], 'ngt': [False, False, False], 'cnvrs_key': [1, 2, 2], 'number_of_calls': [2, 1, 3],
      'first_ques': [True, True, True], 'call_hour': [0, 0, 0]})
 
@@ -672,26 +685,12 @@ def send_inf(phone):
     unsend_inf = config.unwanted_for_webform_inf
     pers = out[out.phone == phone].drop(unsend_inf, axis=1)
     pers = pers.to_dict('records')[0]
-    requests.post(config.recive_url, json=json.dumps(pers))
+    requests.post(config.recive_url, json=pers)
 
 
 @app.route('/receiver', methods=['GET', 'POST'])
 def receiver():
     print(request.get_json())
-
-
-@app.route('/add_person', methods=['GET', 'POST'])
-def add_person():
-    """
-
-    """
-    global out
-    if request.method == "POST":
-        fields = [k for k in request.form]
-        values = [[request.form[k]] for k in request.form]
-        values = np.array(values)
-        dt = pd.DataFrame(data=values.T, columns=fields)
-        out = pd.concat([out, dt])
 
 
 def initiate_call(twiml, phone):
@@ -743,6 +742,54 @@ def make_calls():
                 initiate_call(twiml=twiml_xml, phone=phone)
             number_of_client = int(config.number_of_calls_per_time / 100 * config.percent_of_new)
 ######################################################################################################################
+
+
+@app.route('/add_person', methods=['GET', 'POST'])
+def add_person():
+    """
+
+    """
+    global out
+    if request.method == "POST":
+        json = request.get_json()
+        values = [[json[k]] for k in flds]
+        values = np.array(values).T
+        print(values, '                                ', flds)
+        dt = pd.DataFrame(data=values, columns=flds)
+        print(dt)
+        out = pd.concat([out, dt])
+        print(out)
+
+
+@app.route('/snd', methods=['POST', 'GET'])
+def snd():
+    pers = {'photo_url': 'http://www.letchworthmini.co.uk/s/cc_images/cache_71011477.JPG', 'phone': '+9379992'}
+    requests.post('https://0d5cbef5.ngrok.io/extract_num', json=pers)
+
+
+@app.route('/extract_num', methods=['POST', 'GET'])
+def extract_num():
+    photo_url = request.get_json()['photo_url']
+
+    global graph
+    with graph.as_default():
+        c, _ = Main.main(photo_url)
+        c = Main.validate_for_britain(c)
+    req = request.get_json()
+
+    for i in range(len(adding_filds)):
+        if i < 3:
+            req[adding_filds[i]] = 0
+        elif i < 7:
+            req[adding_filds[i]] = False
+        elif i == 7:
+            req[adding_filds[i]] = 1
+        else:
+            req[adding_filds[i]] = None
+    req['reg_num'] = c
+    del req['photo_url']
+    print(req)
+    requests.post(config.add_pers_url, json=req)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
 # Main.py
+import urllib
 
 import cv2
 import numpy as np
@@ -21,21 +22,16 @@ showSteps = False
 counter = 0
 
 def main(image):
-    CnnClassifier = DetectChars.loadCNNClassifier()  # attempt KNN training
-    # response  = str(input('Do you want to see the Intermediate images: '))
-    """
-    if response == 'Y' or response == 'y':
-        showSteps = True
-    else:
-        showSteps = False
+    # CnnClassifier = DetectChars.loadCNNClassifier()  # attempt KNN training
+    #
+    # if CnnClassifier == False:  # if KNN training was not successful
+    #     print("\nerror: CNN traning was not successful\n")  # show error message
+    #     return  # and exit program
 
-    """
-
-    if CnnClassifier == False:  # if KNN training was not successful
-        print("\nerror: CNN traning was not successful\n")  # show error message
-        return  # and exit program
-
-    imgOriginalScene = cv2.imread(image)  # open image
+    resp = urllib.request.urlopen(image)
+    image = np.asarray(bytearray(resp.read()), dtype="uint8")
+    imgOriginalScene = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    # imgOriginalScene = cv2.imread(image)  # open image
     # plt.imshow(imgOriginalScene)
 
     cv2.imshow("cropped", imgOriginalScene)
@@ -74,7 +70,7 @@ def main(image):
 
     if len(listOfPossiblePlates) == 0:  # if no plates were found
         print("\nno license plates were detected\n")  # inform user no plates were found
-        response = ' '
+        response = 'lll'
         return response, imgOriginalScene
     else:  # else
         # if we get in here list of possible plates has at leat one plate
@@ -111,7 +107,7 @@ def main(image):
 
             cv2.imwrite("/home/user/PycharmProjects/plates/cars/imgOriginalScene" + str(counter) + ".png", imgOriginalScene)  # write image out to file
             input('Press any key to continue...')  # hold windows open until user presses a key
-
+    cv2.destroyAllWindows()
     return licPlate.strChars, licPlate.imgPlate
 
 
@@ -178,6 +174,44 @@ def writeLicensePlateCharsOnImage(imgOriginalScene, licPlate):
 # end function
 
 ###################################################################################################
+def validate_for_britain(line):
+    ln = len(line)
+    for j in range(len(line)):
+
+        if line[j] == '0' and (j < 1 or j > ln - 4):
+            line = line[:j] + "O" + line[j + 1:]
+        elif line[j] == 'O' and ((ln == 7 and j > 0 and j < 4) or (ln == 6 and j > 0 and j < 3)):
+            line = line[:j] + "0" + line[j + 1:]
+
+        elif line[j] == 'S' and ((ln == 7 and j > 1 and j < 4) or (ln == 6 and j > 0 and j < 3)):
+            line = line[:j] + "5" + line[j + 1:]
+        elif line[j] == '5' and (j < 1 or j > ln - 4):
+            line = line[:j] + "S" + line[j + 1:]
+
+        elif (line[j] == 'T' or line[j] == 'Y' or line[j] == 'I' or line[j] == 'V') and (
+                (ln == 7 and j > 1 and j < 4) or (ln == 6 and j > 0 and j < 3)):
+            line = line[:j] + "1" + line[j + 1:]
+        elif line[j] == '1' and (j < 1 or j > ln - 4):
+            line = line[:j] + "T" + line[j + 1:]
+        elif line[j] == 'I' and (j < 1 or j > ln - 4):
+            line = line[:j] + "W" + line[j + 1:]
+
+        elif line[j] == 'Z' and ((ln == 7 and j > 1 and j < 4) or (ln == 6 and j > 0 and j < 3)):
+            line = line[:j] + "2" + line[j + 1:]
+        elif line[j] == '2' and (j < 1 or j > ln - 4):
+            line = line[:j] + "Z" + line[j + 1:]
+
+        elif line[j] == 'B' and ((ln == 7 and j > 1 and j < 4) or (ln == 6 and j > 0 and j < 3)):
+            line = line[:j] + "8" + line[j + 1:]
+        elif line[j] == '8' and (j < 1 or j > ln - 4):
+            line = line[:j] + "B" + line[j + 1:]
+
+        elif line[j] == '9' and (j < 1 or j > ln - 4):
+            line = line[:j] + "B" + line[j + 1:]
+
+        elif line[j] == '4' and (j < 1 or j > ln - 4):
+            line = line[:j] + "A" + line[j + 1:]
+    return line
 
 if __name__ == "__main__":
     """
@@ -220,46 +254,12 @@ if __name__ == "__main__":
     dirnrmN = '/home/user/PycharmProjects/plates/cars/new/norm'
     names = os.listdir(dirnrmN)
     counter = 0
-    # names = ['W891WOY.jpg']
+    names = ['home/user/PycharmProjects/plates/cars/forTest/A002BBV.jpg']
     for i in names:
-        c, n = main(dirnrmN + '/' + i)
-        ln = len(c)
-        for j in range(len(c)):
+        c, _ = main('/home/user/PycharmProjects/plates/cars/forTest/A002BBV.jpg')
+        c = validate_for_britain(c)
 
-            if c[j] == '0' and (j < 1 or j > ln - 4):
-                c= c[:j] + "O" + c[j+1:]
-            elif c[j] == 'O' and ((ln == 7 and j > 0 and j < 4) or (ln == 6 and j > 0 and j < 3)):
-                c= c[:j] + "0" + c[j+1:]
-
-            elif c[j] == 'S' and ((ln == 7 and j > 1 and j < 4) or (ln == 6 and j > 0 and j < 3)):
-                c= c[:j] + "5" + c[j+1:]
-            elif c[j] == '5' and (j < 1 or j > ln - 4):
-                c= c[:j] + "S" + c[j+1:]
-
-            elif (c[j] == 'T' or c[j] == 'Y' or c[j] == 'I' or c[j] == 'V') and ((ln == 7 and j > 1 and j < 4) or (ln == 6 and j > 0 and j < 3)):
-                c= c[:j] + "1" + c[j+1:]
-            elif c[j] == '1' and (j < 1 or j > ln - 4):
-                c= c[:j] + "T" + c[j+1:]
-            elif c[j] == 'I' and (j < 1 or j > ln - 4):
-                c= c[:j] + "W" + c[j+1:]
-
-            elif c[j] == 'Z' and ((ln == 7 and j > 1 and j < 4) or (ln == 6 and j > 0 and j < 3)):
-                c= c[:j] + "2" + c[j+1:]
-            elif c[j] == '2' and (j < 1 or j > ln - 4):
-                c= c[:j] + "Z" + c[j+1:]
-
-            elif c[j] == 'B' and ((ln == 7 and j > 1 and j < 4) or (ln == 6 and j > 0 and j < 3)):
-                c= c[:j] + "8" + c[j+1:]
-            elif c[j] == '8' and (j < 1 or j > ln - 4):
-                c= c[:j] + "B" + c[j+1:]
-
-            elif c[j] == '9' and (j < 1 or j > ln - 4):
-                c= c[:j] + "B" + c[j+1:]
-
-            elif c[j] == '4' and (j < 1 or j > ln - 4):
-                c= c[:j] + "A" + c[j+1:]
-
-        print(i[:-4],'         ', c)
+        print(i[:-4], '         ', c)
         if i.find(c) != -1:
             print('!!!!!!!!!!!!')
             counter += 1

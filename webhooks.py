@@ -22,11 +22,6 @@ import Main
 from keras.models import load_model
 from keras.optimizers import RMSprop
 
-adding_filds = ['number_of_calls', 'call_hour', 'cnvrs_key', 'pst', 'ngt', 'again_key', 'first_ques',
-                'stage', 'phone_for_offer', 'mileage', 'serv_hist','city']
-
-flds = ['number_of_calls', 'call_hour', 'cnvrs_key', 'pst', 'ngt', 'again_key', 'first_ques',
-        'stage', 'phone_for_offer', 'mileage', 'serv_hist','city', 'reg_num', 'phone']
 model = load_model('char-reg.h5')
 model.compile(optimizer=RMSprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.005), loss='categorical_crossentropy',
               metrics=['accuracy'])
@@ -752,13 +747,10 @@ def add_person():
     global out
     if request.method == "POST":
         json = request.get_json()
-        values = [[json[k]] for k in flds]
+        values = [[json[k]] for k in config.flds]
         values = np.array(values).T
-        print(values, '                                ', flds)
-        dt = pd.DataFrame(data=values, columns=flds)
-        print(dt)
+        dt = pd.DataFrame(data=values, columns=config.flds)
         out = pd.concat([out, dt])
-        print(out)
 
 
 @app.route('/snd', methods=['POST', 'GET'])
@@ -777,18 +769,18 @@ def extract_num():
         c = Main.validate_for_britain(c)
     req = request.get_json()
 
-    for i in range(len(adding_filds)):
+    for i in range(len(config.adding_filds)):
         if i < 3:
-            req[adding_filds[i]] = 0
+            req[config.adding_filds[i]] = 0
         elif i < 7:
-            req[adding_filds[i]] = False
+            req[config.adding_filds[i]] = False
         elif i == 7:
-            req[adding_filds[i]] = 1
+            req[config.adding_filds[i]] = 1
         else:
-            req[adding_filds[i]] = None
+            req[config.adding_filds[i]] = None
     req['reg_num'] = c
     del req['photo_url']
-    print(req)
+    # print(req)
     requests.post(config.add_pers_url, json=req)
 
 

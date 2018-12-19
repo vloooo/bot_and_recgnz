@@ -1,4 +1,4 @@
-call_hour,city,cnvrs_key,mileage,number_of_calls,phone,phone for offer,registration number,service history,stage
+call_hour,city,cnvrs_key,mileage,number_of_calls,phone,phone_for_offer,reg_num,serv_hist,stage
 14,Liverpool,1,2522.0,1,+380938482501,,AS 123 SD,,5
 0,,2,,1,,,,,1
 0,,2,,3,,,,,1

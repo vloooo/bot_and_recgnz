@@ -4,12 +4,9 @@ import urllib
 import cv2
 import numpy as np
 import os
-import time
-import matplotlib.pyplot as plt
 import DetectChars
 import DetectPlates
 from PIL import Image
-import PossiblePlate
 
 # module level variables ##########################################################################
 SCALAR_BLACK = (0.0, 0.0, 0.0)

@@ -1,16 +1,16 @@
 ents = {
-    'pst': ["yes", "yeah","exactly", "you are right", "just so", "ok", "yeh", "yep", "correct", "affirmative", "perfect", "still available", "yes, it is",
-                "ok thats great", "perfect, thanks", "thank you for contact me", "whats the offer",
-                "thanks for the offer", "cool", "yes please", "why not", "if its free", "accept", "precisely", "you may well say so"],
+    'pst': ["yes", "yeah", "exactly", "you are right", "just so", "ok", "yeh", "yep", "correct", "affirmative",
+            "perfect", "still available", "yes, it is", "ok that's great", "perfect, thanks", "thank you for contact me",
+            "whats the offer", "thanks for the offer", "cool", "yes please", "why not", "if its free", "accept",
+            "precisely", "you may well say so", "available"],
 
     'ngt': ["sorry it's sold", "no way", "sorry, sold", "it's gone", "sold it", "sold it last week",
-                "sold it", "sold", "i don't have a car for sale", "you have missed it", "no",
-                "no thanks", "not for me", "i don't think so", "fuck off", "piss off", "thats not my",
-                "i don't own", "thats not correct", "thats not", 'is wrong', "thats not", "i live in",
-                "where did you get", "why do you need to know that?", "that's not", "my mobile is",
-                "don't know", "what is service history", 'i have lost', "not interested", "don't", 'changed my mind']
+            "sold it", "sold", "i don't have a car for sale", "you have missed it", "no",
+            "no thanks", "not for me", "i don't think so", "fuck off", "piss off", "that's not my",
+            "i don't own", "that's not correct", "that's not", 'is wrong', "i live in",
+            "where did you get", "why do you need to know that?", "my mobile is",
+            "don't know", "what is service history", 'i have lost', "not interested", "don't", 'changed my mind']
 }
-
 
 subjects = ['my greeting', 'registration number of your car', ' mileage of your car', 'the nearest city to you',
             'phone number to offer', 'your car service history', 'making you offer']

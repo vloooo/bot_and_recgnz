@@ -5,19 +5,11 @@ import numpy as np
 import math
 import Main
 import random
-import matplotlib.pyplot as plt
 import Preprocess
 import DetectChars
 from PIL import Image
 import PossiblePlate
 import PossibleChar
-from skimage.io import imread
-from skimage.filters import threshold_otsu, threshold_local
-import matplotlib.pyplot as plt
-from skimage import measure
-from skimage.measure import regionprops
-import matplotlib.patches as patches
-
 # module level variables ##########################################################################
 PLATE_WIDTH_PADDING_FACTOR = 1.3
 PLATE_HEIGHT_PADDING_FACTOR = 1.5

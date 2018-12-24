@@ -3,19 +3,11 @@
 import cv2
 import numpy as np
 import math
-import random
-from keras.models import Sequential
-from keras.layers.core import Dense, Dropout, Flatten
-from keras.layers.convolutional import Conv2D
-from keras.optimizers import Adam
-from keras.layers.pooling import MaxPooling2D
-from keras.utils import to_categorical
 import Main
 from PIL import Image
 import Preprocess
 import PossibleChar
 import webhooks
-import matplotlib.pyplot as plt
 from keras.models import load_model
 from keras.optimizers import RMSprop
 

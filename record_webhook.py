@@ -21,6 +21,9 @@ import tensorflow as tf
 import Main
 from keras.models import load_model
 from keras.optimizers import RMSprop
+import io
+import speech_recognition as sr
+from urllib.request import urlopen
 import nltk
 
 nltk.download('wordnet')
@@ -141,16 +144,15 @@ def find_plate(client_speech, phone):
 
 #                                           collecting and standart operation part
 #######################################################################################################################
-def collect_speech_gather(text, hints, phone_number, sufix='', timeout='auto'):
+def collect_speech_gather(text, hints, phone_number, rsp, sufix=''):
     """
 
     """
-    if timeout != 'auto':
-        timeout = int(timeout)
     stg = str(out[out.phone == phone_number]['stage'][0])
-    gather = Gather(speechTimeout=3, hints=hints, action=ngrok_url + stg + sufix, input='speech')
-    gather.say(text)
-    return gather
+    rsp.say(text)
+    rsp.record(finish_on_key='*', play_beep=False, timeout=2, action=ngrok_url + stg + sufix, max_length=10)
+
+    return rsp
 
 
 def collect_redirect_speech(phone):
@@ -193,8 +195,8 @@ def collect_2gathers_response(text, hints, phone, sufix='', add_step=True, timeo
         out['stage'][out['phone'] == phone] = 1 + out['stage'][out['phone'] == phone][0]
 
     twiml_response = VoiceResponse()
-    twiml_response.append(collect_speech_gather(text, hints, phone, sufix, timeout))
-    twiml_response.append(collect_speech_gather(phrases.cld_u_rpt, hints, phone, sufix, timeout))
+    twiml_response = collect_speech_gather(text, hints, phone, twiml_response, sufix)
+    twiml_response = collect_speech_gather(text, hints, phone, twiml_response, sufix)
     twiml_response.say(phrases.ddnt_rcv_inp)
     return twiml_response.to_xml()
 
@@ -296,7 +298,14 @@ def undrstnd_newcall_recall(phone, form):
         out['first_ques'][out.phone == phone] = False
         return 'yes lll'
     else:
-        client_speech = form.get('SpeechResult')
+        url = request.form.get('RecordingUrl')
+        data = io.BytesIO(urlopen(url).read())
+
+        r = sr.Recognizer()
+        with sr.AudioFile(data) as source:
+            audio_ = r.record(source)
+
+        client_speech = r.recognize_google(audio_)
         write_user_answer(text=client_speech, phone=phone)
         return client_speech
 
@@ -424,7 +433,14 @@ def question3_1():
 
     global out
 
-    client_speech = request.form.get('SpeechResult')
+    url = request.form.get('RecordingUrl')
+    data = io.BytesIO(urlopen(url).read())
+
+    r = sr.Recognizer()
+    with sr.AudioFile(data) as source:
+        audio_ = r.record(source)
+
+    client_speech = r.recognize_google(audio_)
     phone = request.form.get('To')
     write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
@@ -479,7 +495,14 @@ def question4_1():
 
     global out
 
-    client_speech = request.form.get('SpeechResult')
+    url = request.form.get('RecordingUrl')
+    data = io.BytesIO(urlopen(url).read())
+
+    r = sr.Recognizer()
+    with sr.AudioFile(data) as source:
+        audio_ = r.record(source)
+
+    client_speech = r.recognize_google(audio_)
     phone = request.form.get('To')
     write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
@@ -531,7 +554,14 @@ def question5_1():
     """
 
     global out
-    client_speech = request.form.get('SpeechResult')
+    url = request.form.get('RecordingUrl')
+    data = io.BytesIO(urlopen(url).read())
+
+    r = sr.Recognizer()
+    with sr.AudioFile(data) as source:
+        audio_ = r.record(source)
+
+    client_speech = r.recognize_google(audio_)
     phone = request.form.get('To')
     write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
@@ -624,7 +654,14 @@ def question7():
         found = True
         out['first_ques'][out.phone == phone] = False
     else:
-        client_speech = request.form.get('SpeechResult')
+        url = request.form.get('RecordingUrl')
+        data = io.BytesIO(urlopen(url).read())
+
+        r = sr.Recognizer()
+        with sr.AudioFile(data) as source:
+            audio_ = r.record(source)
+
+        client_speech = r.recognize_google(audio_)
         found = find_service_hist(client_speech, phone)
         write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
@@ -648,7 +685,14 @@ def question8():
      обрабатывается вопрос: вы примите оффер?
      бот произносит прощание, разговор кончается
     """
-    client_speech = request.form.get('SpeechResult')
+    url = request.form.get('RecordingUrl')
+    data = io.BytesIO(urlopen(url).read())
+
+    r = sr.Recognizer()
+    with sr.AudioFile(data) as source:
+        audio_ = r.record(source)
+
+    client_speech = r.recognize_google(audio_)
     phone = request.form.get('To')
     pos, _ = get_pos_neg(client_speech=client_speech, phone=phone)
     write_user_answer(text='dictate: ' + client_speech, phone=phone)

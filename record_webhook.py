@@ -1,4 +1,6 @@
 import string
+from random import shuffle
+
 from flask import Flask, request
 import spacy
 from ents import ents, subjects
@@ -50,11 +52,12 @@ app = Flask(__name__)  # работа с вебом
 
 out = pd.DataFrame(
     {"reg_num": ['AS 123 SD', None, None], "mileage": ['1500', None, None], "city": ['London', None, None],
-     "phone": ["+380959293096", "+55555555555", "+3333333333333"], "phone_for_offer": [None, None, None],
+     "phone": ["+380669631139", "+380959293096", "+3333333333333"], "phone_for_offer": [None, None, None],
      "serv_hist": [None, None, None], 'again_key': [False, False, False], 'stage': [1, 1, 1],
-     'pst': [False, False, False], 'ngt': [False, False, False], 'cnvrs_key': [0, 2, 2], 'number_of_calls': [0, 1, 3],
-     'first_ques': [True, True, True], 'call_hour': [0, 0, 0]})
+     'pst': [False, False, False], 'ngt': [False, False, False], 'cnvrs_key': [0, 1, 2], 'number_of_calls': [0, 0, 3],
+     'first_ques': [True, True, True], 'call_day': [0, 0, 0], 'accept': [None, None, None]})
 
+quiq_recall_phones = []
 
 #                                            find special values
 #######################################################################################################################
@@ -123,7 +126,10 @@ def find_plate(client_speech, phone):
     elif plate_format_2:
         plate_format = re.findall(r'[a-z][0-9]{2}[a-z]{3}', clue_str)
         tmp_str = plate_format[0][0] + ' ' + plate_format[0][1:3]
-        pos_plate = client_speech.index(tmp_str)
+        pos_plate = client_speech.find(tmp_str)
+        if pos_plate == -1:
+            tmp_str = plate_format[0][:3]
+            pos_plate = client_speech.find(tmp_str)
 
         if pos_plate == 0 or (
                 pos_plate > 2 and client_speech[pos_plate - 3] != ' ' and client_speech[pos_plate - 1] == ' '):
@@ -136,8 +142,6 @@ def find_plate(client_speech, phone):
             out['reg_num'][out['phone'] == phone] = plate_format_2[0].upper()
             found = True
 
-    return found
-
 
 #######################################################################################################################
 
@@ -148,9 +152,9 @@ def collect_speech_gather(text, hints, phone_number, rsp, sufix=''):
     """
 
     """
-    stg = str(out[out.phone == phone_number]['stage'][0])
+    stg = str(out[out.phone == phone_number]['stage'].values[0])
     rsp.say(text)
-    rsp.record(finish_on_key='*', play_beep=False, timeout=2, action=ngrok_url + stg + sufix, max_length=10)
+    rsp.record(finish_on_key='*', play_beep=False, timeout=4, action=ngrok_url + stg + sufix, max_length=15)
 
     return rsp
 
@@ -162,9 +166,9 @@ def collect_redirect_speech(phone):
     response = VoiceResponse()
 
     response.say('Hi, I am phoning you again to talk about your car. Last time we stoped on ' +
-                 subjects[out['stage'][out.phone == phone][0] - 1])
+                 subjects[out['stage'][out.phone == phone].values[0] - 2])
 
-    response.redirect(ngrok_url + str(out['stage'][out.phone == phone][0]))
+    response.redirect(ngrok_url + str(out['stage'][out.phone == phone].values[0] - 1))
     return response.to_xml()
 
 
@@ -172,8 +176,8 @@ def collect_dgt_gather(text, phone, sufix=''):
     """
 
     """
-    stg = str(out[out.phone == phone]['stage'][0])
-    gather = Gather(input='dtmf', numDigits="10", timeout=7, action=ngrok_url + stg + sufix)
+    stg = str(out[out.phone == phone]['stage'].values[0])
+    gather = Gather(input='dtmf', numDigits="10", timeout=8, action=ngrok_url + stg + sufix)
     gather.say(text)
     return gather
 
@@ -192,7 +196,7 @@ def collect_2gathers_response(text, hints, phone, sufix='', add_step=True, timeo
     global out
 
     if add_step:
-        out['stage'][out['phone'] == phone] = 1 + out['stage'][out['phone'] == phone][0]
+        out['stage'][out['phone'] == phone] = 1 + out['stage'][out['phone'] == phone].values[0]
 
     twiml_response = VoiceResponse()
     twiml_response = collect_speech_gather(text, hints, phone, twiml_response, sufix)
@@ -247,7 +251,7 @@ def find_entyties(text, case, phone):
 
     """
     for i in ents.ents[case]:
-        if out[case][out.phone == phone][0]:
+        if out[case][out.phone == phone].values[0]:
             break
         if i in text:
             out[case][out.phone == phone] = True
@@ -255,7 +259,7 @@ def find_entyties(text, case, phone):
 
 def get_pos_neg(client_speech, phone):
     check_for_pos_neg(client_speech, phone=phone)
-    return out['pst'][out.phone == phone][0], out['ngt'][out.phone == phone][0]
+    return out['pst'][out.phone == phone].values[0], out['ngt'][out.phone == phone].values[0]
 
 
 def choose_rigth_answer(positive_text, negative_text, client_speech, phone, positive_hint='',
@@ -294,9 +298,9 @@ def undrstnd_newcall_recall(phone, form):
 
     """
     global out
-    if out['first_ques'][out.phone == phone][0]:
+    if out['first_ques'][out.phone == phone].values[0]:
         out['first_ques'][out.phone == phone] = False
-        return 'yes lll'
+        return 'YES'
     else:
         url = request.form.get('RecordingUrl')
         data = io.BytesIO(urlopen(url).read())
@@ -316,16 +320,16 @@ def undrstnd_newques_reask(phone):
     """
     global out
     # проверка не задаём ли мы данный вопрос повторно (если да то вопросительная фраза другая)
-    if out['again_key'][out.phone == phone][0]:
+    if out['again_key'][out.phone == phone].values[0]:
         out['again_key'][out.phone == phone] = False
-        return 'could you talk ' + subjects[out['stage'][out.phone == phone][0] - 2] + ' again?'
+        return 'could you talk ' + subjects[out['stage'][out.phone == phone].values[0] - 2] + ' again?'
     else:
-        return 'Please dictate ' + subjects[out['stage'][out.phone == phone][0] - 2]
+        return 'Please dictate ' + subjects[out['stage'][out.phone == phone].values[0] - 2]
 
 
 def write_user_answer(text, phone):
     with open(phone, "a") as f:
-        f.write("\n" + phrases.stage_content[out[out.phone == phone]['stage'][0] - 1] + '\n' + text + "\n\n")
+        f.write("\n" + phrases.stage_content[out[out.phone == phone]['stage'].values[0] - 1] + '\n' + text + "\n\n")
 
 
 def get_stage_values(form, lack_ngt_text=True):
@@ -339,13 +343,12 @@ def get_stage_values(form, lack_ngt_text=True):
 ###############################################################################################################
 
 
-def set_call_hour(phone):
+def set_call_day(phone):
     """
 
     """
-    out['call_hour'][out.phone == phone] = datetime.utcnow().hour
-    if datetime.utcnow().minute > 25:
-        out['call_hour'][out.phone == phone] += 1
+    global out
+    out['call_day'][out.phone == phone] = datetime.utcnow().day
 
 
 def set_first_qwe(phone, key):
@@ -365,6 +368,7 @@ def set_convrs_key(phone, key):
 
 
 def set_number_of_calls(phone):
+    global out
     out['number_of_calls'][out.phone == phone] += 1
 
 
@@ -399,7 +403,7 @@ def question2():
     # twilio выбор ответа
     return choose_rigth_answer(client_speech=client_speech, negative_text=phrases.sorry_4_bothr,
                                positive_text='Can I confirm your vehicle registration number is ' + str(
-                                   out[out.phone == phone]['reg_num'][0]) + '?',
+                                   out[out.phone == phone]['reg_num'].values[0]) + '?',
                                positive_hint=phrases.pst_hint, phone=phone, end_call=True, repeat_hint=phrases.pst_hint)
 
 
@@ -416,7 +420,7 @@ def question3():
 
     return choose_rigth_answer(positive_hint=phrases.pst_hint, negative_hint=phrases.reg_num,
                                positive_text='Can I confirm the mileage as ' + str(
-                                   out['mileage'][out.phone == phone][0]) + '?',
+                                   out['mileage'][out.phone == phone].values[0]) + '?',
                                repeat_hint=phrases.pst_hint + ', ' + phrases.reg_num,
                                client_speech=client_speech, negative_text=ngt_txt, phone=phone, timeout='5')
 
@@ -452,7 +456,7 @@ def question3_1():
 
         twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints=phrases.pst_hint,
                                               text='Can I validate, your vehicle registration number is ' +
-                                                   str(out['reg_num'][out.phone == phone][0]) + '?')
+                                                   str(out['reg_num'][out.phone == phone].values[0]) + '?')
 
     elif neg:
         set_convrs_key(phone=phone, key=2)
@@ -479,7 +483,7 @@ def question4():
     return choose_rigth_answer(positive_hint=phrases.pst_hint, client_speech=client_speech,
                                phone=phone, negative_hint=phrases.mileage, negative_text=ngt_txt,
                                positive_text='Can I just confirm you live in ' +
-                                             str(out['city'][out.phone == phone][0]) + '?',
+                                             str(out['city'][out.phone == phone].values[0]) + '?',
                                repeat_hint=phrases.pst_hint + ', ' + phrases.mileage)
 
 
@@ -514,7 +518,7 @@ def question4_1():
 
         twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints=phrases.pst_hint,
                                               text='Can I validate, your mileage is ' +
-                                                   str(out['mileage'][out.phone == phone][0]) + '?')
+                                                   str(out['mileage'][out.phone == phone].values[0]) + '?')
 
     elif neg:
         set_convrs_key(phone=phone, key=2)
@@ -573,7 +577,7 @@ def question5_1():
 
         twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints=phrases.pst_hint,
                                               text='Can I validate, you live in ' + str(
-                                                  out['city'][out.phone == phone][0]) + '?')
+                                                  out['city'][out.phone == phone].values[0]) + '?')
 
     elif neg:
         set_convrs_key(phone=phone, key=2)
@@ -650,7 +654,7 @@ def question7():
     global out
 
     phone = request.form.get('To')
-    if out['cnvrs_key'][out.phone == phone][0] == 1 and out['first_ques'][out.phone == phone][0]:
+    if out['cnvrs_key'][out.phone == phone].values[0] == 1 and out['first_ques'][out.phone == phone].values[0]:
         found = True
         out['first_ques'][out.phone == phone] = False
     else:
@@ -668,7 +672,7 @@ def question7():
     # если найдено одно из допустимых значений сервисной истории --> следующий вопрос
     if found:
         twiml_xml = collect_2gathers_response(text=phrases.seventh_stage, hints=phrases.pst_hint, phone=phone)
-        out['cnvrs_key'][out.phone == phone] = 3
+        set_convrs_key(phone, 3)
         send_inf(phone=phone)
 
     # иначе вопрос задаётся повторно
@@ -694,11 +698,16 @@ def question8():
 
     client_speech = r.recognize_google(audio_)
     phone = request.form.get('To')
-    pos, _ = get_pos_neg(client_speech=client_speech, phone=phone)
+    pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
     write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
     if pos:
-        twiml_xml = collect_end_conversation(phrases.bye)
+        set_convrs_key(phone, 1)
+        twiml_xml = collect_end_conversation(phrases.u_can_vld_it)
+
+    elif neg:
+        set_convrs_key(phone, 0)
+        twiml_xml = collect_end_conversation(phrases.u_can_vld_it)
 
     else:
         twiml_xml = collect_end_conversation(phrases.u_can_vld_it)
@@ -721,16 +730,18 @@ def del_person():
     unsend_inf = config.unwanted_inf
     not_lack_call = out[out['cnvrs_key'] > 1].drop(unsend_inf, axis=1)
     out = out.drop(out[out['cnvrs_key'] > 1].index)
-    too_many_calls = out[out['number_of_calls'] >= 6].drop(unsend_inf, axis=1)
-    out = out.drop(out[out['number_of_calls'] >= 6].index)
+    too_many_calls = out[out['number_of_calls'] >= config.finaly_number_of_calls].drop(unsend_inf, axis=1)
+    out = out.drop(out[out['number_of_calls'] >= config.finaly_number_of_calls].index)
     hist_data = pd.concat([hist_data, not_lack_call, too_many_calls], ignore_index=True)
     hist_data.to_csv('history.csv', index=False)
 
 
-def send_inf(phone):
+@app.route('/send', methods=['GET', 'POST'])
+def send_inf():
     """
 
     """
+    phone = config.phone_for_test
     unsend_inf = config.unwanted_for_webform_inf
     pers = out[out.phone == phone].drop(unsend_inf, axis=1)
     pers = pers.to_dict('records')[0]
@@ -739,7 +750,7 @@ def send_inf(phone):
 
 @app.route('/receiver', methods=['GET', 'POST'])
 def receiver():
-    print(request.form)
+    print(request.get_json())
 
 
 def initiate_call(twiml, phone):
@@ -760,7 +771,7 @@ def test_call():
                         record=True)
 
 
-@app.route('/call_auto', methods=['GET', 'POST'])
+@app.route('/call_auto')
 def call_auto():
     """
 
@@ -779,28 +790,63 @@ def make_calls():
     """
     совершает звонок, если имеются подходящие записи
     """
+    global quiq_recall_phones
+    number_of_calls = np.max([config.number_of_calls_per_time - quiq_recalls(), 2])
 
-    filtered_for_recall = out[out.cnvrs_key == 1][abs(out.call_hour - datetime.utcnow().hour) > config.recall_step] \
+    filtered_for_recall = out[out.cnvrs_key == 1][abs(out.call_day - datetime.utcnow().day) >= config.recall_step] \
         [out.number_of_calls < config.finaly_number_of_calls]
-    candidates_to_call = pd.concat([out[out.cnvrs_key == 0], filtered_for_recall])
+    filtered_for_call = out[out.cnvrs_key == 0][abs(out.call_day - datetime.utcnow().day) >= config.recall_step] \
+        [out.number_of_calls < config.finaly_number_of_calls]
 
+    candidates_to_call = pd.concat([filtered_for_call, filtered_for_recall])
     if len(candidates_to_call):
-        number_of_client = int(config.number_of_calls_per_time / 100 * (100 - config.percent_of_new))
-        for i in range(1, -1, -1):
-            phone_num_list = candidates_to_call[out.cnvrs_key == i]['phone'][:number_of_client].values
-            for phone in phone_num_list:
-                set_number_of_calls(phone)
-                set_call_hour(phone)
-                if i == 1:
-                    set_first_qwe(phone=phone, key=True)
-                    twiml_xml = collect_redirect_speech(phone=phone)
-                else:
-                    set_first_qwe(phone=phone, key=False)
+        number_of_client = int(round(number_of_calls / 100 * (100 - config.percent_of_new)))
 
-                    twiml_xml = collect_2gathers_response(text=phrases.greeting,
-                                                          hints=phrases.pst_hint, phone=phone, add_step=False)
-                initiate_call(twiml=twiml_xml, phone=phone)
-            number_of_client = int(config.number_of_calls_per_time / 100 * config.percent_of_new)
+        for i in range(1, -1, -1):
+
+            phone_num_list = candidates_to_call[out.cnvrs_key == i]['phone'].values
+            shuffle(phone_num_list)
+            if len(phone_num_list):
+                phone_num_list = phone_num_list[:np.min([number_of_client, len(phone_num_list)])]
+                number_of_client = len(phone_num_list)
+                for phone in phone_num_list:
+
+                    quiq_recall_phones.append(phone)
+                    set_number_of_calls(phone)
+                    set_call_day(phone)
+                    if i == 1:
+                        set_first_qwe(phone=phone, key=True)
+                        twiml_xml = collect_redirect_speech(phone=phone)
+                    else:
+                        set_first_qwe(phone=phone, key=False)
+
+                        twiml_xml = collect_2gathers_response(text=phrases.greeting,
+                                                              hints=phrases.pst_hint, phone=phone, add_step=False)
+                    initiate_call(twiml=twiml_xml, phone=phone)
+                number_of_client = config.number_of_calls_per_time - number_of_client
+            else:
+                number_of_client = config.number_of_calls_per_time
+
+
+def quiq_recalls():
+    global quiq_recall_phones
+    number_of_calls = 0
+
+    for phone in quiq_recall_phones:
+        set_number_of_calls(phone)
+        set_call_day(phone)
+        if out['cnvrs_key'][out.phone == phone].values[0] == 1 or out['cnvrs_key'][out.phone == phone].values[0] == 0:
+            if out['cnvrs_key'][out.phone == phone].values[0] == 1:
+                set_first_qwe(phone=phone, key=True)
+                twiml_xml = collect_redirect_speech(phone=phone)
+            elif out['cnvrs_key'][out.phone == phone].values[0] == 0:
+                set_first_qwe(phone=phone, key=False)
+                twiml_xml = collect_2gathers_response(text=phrases.greeting,
+                                                      hints=phrases.pst_hint, phone=phone, add_step=False)
+            initiate_call(twiml=twiml_xml, phone=phone)
+            number_of_calls += 1
+    quiq_recall_phones.clear()
+    return number_of_calls
 
 
 ######################################################################################################################
@@ -900,6 +946,10 @@ def index():
                 <input type="file" name="pic">
                 <input type="submit" name="submit">
                 </form>"""
+
+@app.route('/ir')
+def ir():
+    print(out)
 
 
 if __name__ == '__main__':

@@ -62,8 +62,8 @@ def main(image):
 
     listOfPossiblePlates = DetectChars.detectCharsInPlates(listOfPossiblePlates)  # detect chars in plates
 
-    if showSteps == True:
-        Image.fromarray(imgOriginalScene, 'RGB').show()  # show scene image
+    listOfPossiblePlates = [x for x in listOfPossiblePlates if len(x.strChars)<8]
+
 
     if len(listOfPossiblePlates) == 0:  # if no plates were found
         print("\nno license plates were detected\n")  # inform user no plates were found

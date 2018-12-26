@@ -10,7 +10,7 @@ keybrd_inp = 'Use the keyboard to enter the number, which you would like to rece
 
 bye = 'Take care and goodbye for now.'
 
-u_can_vld_it = '''If any of the above, say. OK no worries if any of you say was incorect. You can validate it on site.
+u_can_vld_it = '''OK no worries if any of you say was incorect. You can validate it on site.
                 Take care and goodbye for now.'''
 
 greeting = 'Hi, I am phoning about your car, is it still available?'

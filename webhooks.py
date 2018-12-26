@@ -47,7 +47,7 @@ app = Flask(__name__)  # работа с вебом
 
 out = pd.DataFrame(
     {"reg_num": ['AS 123 SD', None, None], "mileage": ['1500', None, None], "city": ['London', None, None],
-     "phone": ["+380959293096", "+55555555555", "+3333333333333"], "phone_for_offer": [None, None, None],
+     "phone": [config.phone_for_test, "+55555555555", "+3333333333333"], "phone_for_offer": [None, None, None],
      "serv_hist": [None, None, None], 'again_key': [False, False, False], 'stage': [1, 1, 1],
      'pst': [False, False, False], 'ngt': [False, False, False], 'cnvrs_key': [0, 2, 2], 'number_of_calls': [0, 1, 3],
      'first_ques': [True, True, True], 'call_hour': [0, 0, 0]})
@@ -113,13 +113,16 @@ def find_plate(client_speech, phone):
     clue_str = client_speech.replace(" ", "")
     plate_format_1 = re.findall(r'[a-z][0-9]{3}[a-z]{3}', clue_str)
     plate_format_2 = re.findall(r'[a-z][0-9]{2}[a-z]{3}', clue_str)
-
+    print('clue', clue_str)
     if plate_format_1:
         out['reg_num'][out['phone'] == phone] = plate_format_1[0].upper()
         found = True
     elif plate_format_2:
         plate_format = re.findall(r'[a-z][0-9]{2}[a-z]{3}', clue_str)
         tmp_str = plate_format[0][0] + ' ' + plate_format[0][1:3]
+        print('client', client_speech)
+        print('tmp', tmp_str)
+
         pos_plate = client_speech.index(tmp_str)
 
         if pos_plate == 0 or (
@@ -131,6 +134,7 @@ def find_plate(client_speech, phone):
         elif client_speech[pos_plate - 1] != ' ' or pos_plate - 3 == -1 or client_speech[pos_plate - 3] == ' ':
             plate_format_2 = re.findall(r'[a-z]{2}[0-9]{2}[a-z]{3}', clue_str)
             out['reg_num'][out['phone'] == phone] = plate_format_2[0].upper()
+            print('regNM', plate_format_2[0])
             found = True
 
     return found
@@ -148,7 +152,7 @@ def collect_speech_gather(text, hints, phone_number, sufix='', timeout='auto'):
     if timeout != 'auto':
         timeout = int(timeout)
     stg = str(out[out.phone == phone_number]['stage'][0])
-    gather = Gather(speechTimeout=3, hints=hints, action=ngrok_url + stg + sufix, input='speech')
+    gather = Gather(speechTimeout=2, hints=hints, action=ngrok_url + stg + sufix, input='speech')
     gather.say(text)
     return gather
 

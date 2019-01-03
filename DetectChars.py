@@ -7,7 +7,6 @@ import Main
 from PIL import Image
 import Preprocess
 import PossibleChar
-import matplotlib.pyplot as plt
 import record_webhook
 from keras.models import load_model
 from keras.optimizers import RMSprop
@@ -491,7 +490,7 @@ def recognizeCharsInPlate(imgThresh, listOfMatchingChars):
             cv2.imwrite(name, imgROIResized)
         """
         img = np.reshape(imgROIResized, [1, 64, 64, 3])
-        classes=webhooks.model.predict_classes(img)
+        classes=record_webhook.model.predict_classes(img)
 
         if classes[0] == 17 or classes[0] == 22 or classes[0] == 23 or classes[0] == 20 or classes[0] == 18 \
                 or classes[0] == 31 or classes[0] == 33:

@@ -27,6 +27,7 @@ import io
 import speech_recognition as sr
 from urllib.request import urlopen
 import nltk
+import cv2
 
 nltk.download('wordnet')
 model = load_model('char-reg.h5')
@@ -55,8 +56,10 @@ out = pd.DataFrame(
      "phone": ["+380669631139", "+380959293096", "+3333333333333"], "phone_for_offer": [None, None, None],
      "serv_hist": [None, None, None], 'again_key': [False, False, False], 'stage': [1, 1, 1],
      'pst': [False, False, False], 'ngt': [False, False, False], 'cnvrs_key': [0, 1, 2], 'number_of_calls': [0, 0, 3],
-     'first_ques': [True, True, True], 'call_day': [0, 0, 0], 'accept': [None, None, None]})
-
+     'first_ques': [True, True, True], 'call_day': [0, 0, 0], 'accept': [None, None, None], 'img_url':
+     [None, None, None]})
+tokens = ['7eb82f1ed5e6ceeca6b26f8316b31717fde0bb25', 'f9e106e2c0a0c6a2493181fd724cdb7b89600af9',
+          '9118e9c1b2a3f65c39b8d90453db99165fb201f0', '0e8c566ad072d543aae409d576012ee4e98a766e']
 quiq_recall_phones = []
 
 #                                            find special values
@@ -84,7 +87,6 @@ def find_city(client_speech, phone):
         if ent.label_ == 'GPE':
             out['city'][out['phone'] == phone] = ent.text
 
-            out.to_csv('out.csv')
             return True
     return False
 
@@ -418,11 +420,34 @@ def question3():
 
     phone, client_speech, ngt_txt = get_stage_values(request.form)
 
-    return choose_rigth_answer(positive_hint=phrases.pst_hint, negative_hint=phrases.reg_num,
-                               positive_text='Can I confirm the mileage as ' + str(
-                                   out['mileage'][out.phone == phone].values[0]) + '?',
-                               repeat_hint=phrases.pst_hint + ', ' + phrases.reg_num,
-                               client_speech=client_speech, negative_text=ngt_txt, phone=phone, timeout='5')
+    pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
+
+    if pos:
+        twiml_xml = collect_2gathers_response(text='Can I confirm the mileage as ' + str(
+                                   out['mileage'][out.phone == phone].values[0]) + '?', hints='', phone=phone)
+
+    elif neg:
+
+        global out
+        resp = urlopen(str(out['img_url'][out['phone'] == phone].values[0]))
+        image = np.asarray(bytearray(resp.read()), dtype="uint8")
+        imgOriginalScene = cv2.imdecode(image, cv2.IMREAD_COLOR)
+        cv2.imwrite('tst.png', imgOriginalScene)
+
+        with open('tst.png', 'rb') as fp:
+            response = requests.post(
+                'https://platerecognizer.com/plate-reader/',
+                files=dict(upload=fp),
+                headers={'Authorization': 'Token ' + tokens[np.random.randint(4)]})
+
+        out['reg_num'][out['phone'] == phone] = response.json()['results'][0]['plate']
+
+        twiml_xml = collect_2gathers_response(text='Can I confirm the mileage as ' + str(
+                                   out['mileage'][out.phone == phone].values[0]) + '?', hints='', phone=phone, timeout='5')
+
+    else:
+        twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints='', phone=phone, add_step=False)
+    return str(twiml_xml)
 
 
 @app.route('/question3_1', methods=['GET', 'POST'])  # работа с вебом
@@ -700,13 +725,13 @@ def question8():
     phone = request.form.get('To')
     pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
     write_user_answer(text='dictate: ' + client_speech, phone=phone)
-
+    global out
     if pos:
-        set_convrs_key(phone, 1)
+        out['accept'][out.phone == phone] = True
         twiml_xml = collect_end_conversation(phrases.u_can_vld_it)
 
     elif neg:
-        set_convrs_key(phone, 0)
+        out['accept'][out.phone == phone] = False
         twiml_xml = collect_end_conversation(phrases.u_can_vld_it)
 
     else:
@@ -868,7 +893,7 @@ def add_person():
 
 @app.route('/snd', methods=['POST', 'GET'])
 def snd():
-    pers = {'photo_url': 'http://www.letchworthmini.co.uk/s/cc_images/cache_71011477.JPG', 'phone': '+9379992'}
+    pers = {'img_url': 'http://www.letchworthmini.co.uk/s/cc_images/cache_71011477.JPG', 'phone': '+9379992'}
     requests.post(config.main_url + 'extract_num', json=pers)
 
 
@@ -884,7 +909,7 @@ def extract_num():
 
         with graph.as_default():
             for j in range(len(req['phone'])):
-                req['reg_num'][j], _ = Main.main(req['photo_url'][j])
+                req['reg_num'][j], _ = Main.main(req['img_url'][j])
 
         for i in range(len(config.adding_filds)):
             if i < 3:
@@ -899,11 +924,10 @@ def extract_num():
             else:
                 req = add_field_to_dict(None, i, req)
 
-        del req['photo_url']
         requests.post(config.add_pers_url, json=req)
         return "SUCCESS"
     except:
-        photo_url = request.get_json()['photo_url']
+        photo_url = request.get_json()['img_url']
 
         global out
         with graph.as_default():
@@ -921,7 +945,6 @@ def extract_num():
             else:
                 req[config.adding_filds[i]] = None
         req['reg_num'] = c
-        del req['photo_url']
         # print(req)
 
         values = [[req[k]] for k in config.flds]

@@ -6,7 +6,6 @@ import numpy as np
 import os
 import DetectChars
 import DetectPlates
-from PIL import Image
 
 # module level variables ##########################################################################
 SCALAR_BLACK = (0.0, 0.0, 0.0)
@@ -234,7 +233,7 @@ if __name__ == "__main__":
     dirnrmN = '/home/user/PycharmProjects/plates/cars/new/norm'
     names = os.listdir(dirnrmN)
     counter = 0
-    names = ['home/user/PycharmProjects/plates/cars/forTest/A002BBV.jpg']
+    # names = ['home/user/PycharmProjects/plates/cars/forTest/A002BBV.jpg']
     for i in names:
         c, _ = main('/home/user/PycharmProjects/plates/cars/forTest/A002BBV.jpg')
         c = validate_for_britain(c)

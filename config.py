@@ -7,9 +7,9 @@ phone_for_test = '+380669631139'
 recive_url = 'https://d86e67ac.ngrok.io/receiver'
 account_sid = 'AC799bc469db94104aba57b5d861847eab'
 auth_token = '98d062d6a7b5327f6e59f15901a63c93'
-unwanted_inf = ['first_ques', 'pst', 'ngt', 'again_key']
+unwanted_inf = ['first_ques', 'pst', 'ngt', 'again_key', 'img_url']
 unwanted_for_webform_inf = ['first_ques', 'pst', 'ngt', 'cnvrs_key', 'number_of_calls', 'again_key', 'stage',
-                            'call_day', 'accept']
+                            'call_day', 'accept', 'img_url']
 finaly_number_of_calls = 4
 percent_of_new = 50
 number_of_calls_per_time = 20
@@ -24,4 +24,10 @@ adding_filds = ['number_of_calls', 'call_day', 'cnvrs_key', 'pst', 'ngt', 'again
                 'stage', 'phone_for_offer', 'mileage', 'serv_hist', 'city', 'accept']
 
 flds = ['number_of_calls', 'call_day', 'cnvrs_key', 'pst', 'ngt', 'again_key', 'first_ques',
-        'stage', 'phone_for_offer', 'mileage', 'serv_hist','city', 'reg_num', 'phone', 'accept']
+        'stage', 'phone_for_offer', 'mileage', 'serv_hist','city', 'reg_num', 'phone', 'accept', 'img_url']
+
+
+'''
+lnxinstance.westeurope.cloudapp.azure.com
+https://d86e67ac.ngrok.io/
+'''

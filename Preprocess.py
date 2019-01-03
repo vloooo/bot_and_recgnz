@@ -2,8 +2,6 @@
 
 import cv2
 import numpy as np
-import math
-import Main
 import PossibleChar
 import DetectChars
 import copy

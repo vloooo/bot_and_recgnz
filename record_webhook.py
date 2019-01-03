@@ -179,7 +179,7 @@ def collect_dgt_gather(text, phone, sufix=''):
 
     """
     stg = str(out[out.phone == phone]['stage'].values[0])
-    gather = Gather(input='dtmf', numDigits="10", timeout=8, action=ngrok_url + stg + sufix)
+    gather = Gather(input='dtmf', numDigits="10", timeout=8, action=ngrok_url + stg + sufix, finish_on_key='*')
     gather.say(text)
     return gather
 
@@ -450,48 +450,48 @@ def question3():
     return str(twiml_xml)
 
 
-@app.route('/question3_1', methods=['GET', 'POST'])  # работа с вебом
-def question3_1():
-    """
-    обрабатывается вопрос:  могу я уточнить ваш регестрационный номер
-    задаётся вопрос:
-        Нашел --> правильно ли я понял ваш номер?
-        неНашел --> могли бы вы повторить ответ
-        Нет --> конец разговора.
-    """
-
-    global out
-
-    url = request.form.get('RecordingUrl')
-    data = io.BytesIO(urlopen(url).read())
-
-    r = sr.Recognizer()
-    with sr.AudioFile(data) as source:
-        audio_ = r.record(source)
-
-    client_speech = r.recognize_google(audio_)
-    phone = request.form.get('To')
-    write_user_answer(text='dictate: ' + client_speech, phone=phone)
-
-    _, neg = get_pos_neg(client_speech=client_speech, phone=phone)
-    found = find_plate(client_speech=client_speech, phone=phone)
-
-    if found:
-        out[out.phone == phone]["again_key"] = True
-
-        twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints=phrases.pst_hint,
-                                              text='Can I validate, your vehicle registration number is ' +
-                                                   str(out['reg_num'][out.phone == phone].values[0]) + '?')
-
-    elif neg:
-        set_convrs_key(phone=phone, key=2)
-        twiml_xml = collect_end_conversation(phrases.sorry_4_bothr)
-
-    else:
-        twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.reg_num, phone=phone,
-                                              add_step=False, sufix='_1', timeout='5')
-
-    return str(twiml_xml)
+# @app.route('/question3_1', methods=['GET', 'POST'])  # работа с вебом
+# def question3_1():
+#     """
+#     обрабатывается вопрос:  могу я уточнить ваш регестрационный номер
+#     задаётся вопрос:
+#         Нашел --> правильно ли я понял ваш номер?
+#         неНашел --> могли бы вы повторить ответ
+#         Нет --> конец разговора.
+#     """
+#
+#     global out
+#
+#     url = request.form.get('RecordingUrl')
+#     data = io.BytesIO(urlopen(url).read())
+#
+#     r = sr.Recognizer()
+#     with sr.AudioFile(data) as source:
+#         audio_ = r.record(source)
+#
+#     client_speech = r.recognize_google(audio_)
+#     phone = request.form.get('To')
+#     write_user_answer(text='dictate: ' + client_speech, phone=phone)
+#
+#     _, neg = get_pos_neg(client_speech=client_speech, phone=phone)
+#     found = find_plate(client_speech=client_speech, phone=phone)
+#
+#     if found:
+#         out[out.phone == phone]["again_key"] = True
+#
+#         twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints=phrases.pst_hint,
+#                                               text='Can I validate, your vehicle registration number is ' +
+#                                                    str(out['reg_num'][out.phone == phone].values[0]) + '?')
+#
+#     elif neg:
+#         set_convrs_key(phone=phone, key=2)
+#         twiml_xml = collect_end_conversation(phrases.sorry_4_bothr)
+#
+#     else:
+#         twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.reg_num, phone=phone,
+#                                               add_step=False, sufix='_1', timeout='5')
+#
+#     return str(twiml_xml)
 
 
 @app.route('/question4', methods=['GET', 'POST'])  # работа с вебом
@@ -503,13 +503,28 @@ def question4():
         Нет --> могу я уточнить ваш пробег
     """
 
-    phone, client_speech, ngt_txt = get_stage_values(request.form)
 
-    return choose_rigth_answer(positive_hint=phrases.pst_hint, client_speech=client_speech,
-                               phone=phone, negative_hint=phrases.mileage, negative_text=ngt_txt,
-                               positive_text='Can I just confirm you live in ' +
-                                             str(out['city'][out.phone == phone].values[0]) + '?',
-                               repeat_hint=phrases.pst_hint + ', ' + phrases.mileage)
+    phone, client_speech = get_stage_values(form=request.form, lack_ngt_text=False)
+    pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
+
+    # при одобрении задаётся следующий вопрос
+    if pos:
+        out['phone_for_offer'][out.phone == phone] = phone
+        twiml_xml = collect_2gathers_response(text='Can I just confirm you live in ' +
+                                              str(out['city'][out.phone == phone].values[0]) + '?',
+                                              phone=phone, hints=phrases.serv_hist)
+
+    # при отрицании прошу ввести номер телефона
+    elif neg:
+        twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ml, phone=phone)
+    # если не нашел никакой реакции переспроси
+    else:
+        twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.pst_hint, phone=phone,
+                                              add_step=False)
+
+    return str(twiml_xml)
+
+
 
 
 @app.route('/question4_1', methods=['GET', 'POST'])  # работа с вебом
@@ -524,36 +539,60 @@ def question4_1():
 
     global out
 
-    url = request.form.get('RecordingUrl')
-    data = io.BytesIO(urlopen(url).read())
-
-    r = sr.Recognizer()
-    with sr.AudioFile(data) as source:
-        audio_ = r.record(source)
-
-    client_speech = r.recognize_google(audio_)
+    client_inp = request.form.get('Digits')  # получаю введённый с клавиатуры мобильный
     phone = request.form.get('To')
-    write_user_answer(text='dictate: ' + client_speech, phone=phone)
+    write_user_answer(text='dictate: ' + client_inp, phone=phone)
 
-    _, neg = get_pos_neg(client_speech=client_speech, phone=phone)
-    found = find_mileage(client_speech=client_speech, phone=phone)
-
-    if found:
-        out[out.phone == phone]["again_key"] = True
-
-        twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints=phrases.pst_hint,
-                                              text='Can I validate, your mileage is ' +
-                                                   str(out['mileage'][out.phone == phone].values[0]) + '?')
-
-    elif neg:
-        set_convrs_key(phone=phone, key=2)
-        twiml_xml = collect_end_conversation(phrases.sorry_4_bothr)
-
-    else:
-        twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.mileage, phone=phone,
-                                              add_step=False, sufix='_1')
+    out['mileage'][out.phone == phone] = client_inp
+    twiml_xml = collect_2gathers_response(text='Can I just confirm you live in ' +
+                                          str(out['city'][out.phone == phone].values[0]) + '?',
+                                          phone=phone, hints=phrases.serv_hist)
 
     return str(twiml_xml)
+
+
+# @app.route('/question4_1_1', methods=['GET', 'POST'])  # работа с вебом
+# def question4_1_1():
+#     """
+#     обрабатывается вопрос:  могу я уточнить ваш пробег
+#     задаётся вопрос:
+#         Нашел --> правильно ли я понял ваш пробег?
+#         неНашел --> могли бы вы повторить ответ
+#         Нет --> конец разговора.
+#     """
+#
+#     global out
+#
+#     url = request.form.get('RecordingUrl')
+#     data = io.BytesIO(urlopen(url).read())
+#
+#     r = sr.Recognizer()
+#     with sr.AudioFile(data) as source:
+#         audio_ = r.record(source)
+#
+#     client_speech = r.recognize_google(audio_)
+#     phone = request.form.get('To')
+#     write_user_answer(text='dictate: ' + client_speech, phone=phone)
+#
+#     _, neg = get_pos_neg(client_speech=client_speech, phone=phone)
+#     found = find_mileage(client_speech=client_speech, phone=phone)
+#
+#     if found:
+#         out[out.phone == phone]["again_key"] = True
+#
+#         twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints=phrases.pst_hint,
+#                                               text='Can I validate, your mileage is ' +
+#                                                    str(out['mileage'][out.phone == phone].values[0]) + '?')
+#
+#     elif neg:
+#         set_convrs_key(phone=phone, key=2)
+#         twiml_xml = collect_end_conversation(phrases.sorry_4_bothr)
+#
+#     else:
+#         twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.mileage, phone=phone,
+#                                               add_step=False, sufix='_1')
+#
+#     return str(twiml_xml)
 
 
 @app.route('/question5', methods=['GET', 'POST'])  # работа с вебом
@@ -634,7 +673,7 @@ def question6():
 
     # при отрицании прошу ввести номер телефона
     elif neg:
-        twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp, phone=phone)
+        twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ph, phone=phone)
     # если не нашел никакой реакции переспроси
     else:
         twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.pst_hint, phone=phone,

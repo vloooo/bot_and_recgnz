@@ -579,7 +579,7 @@ def question6():
 
     # при отрицании прошу ввести номер телефона
     elif neg:
-        twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp, phone=phone)
+        twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ph, phone=phone)
     # если не нашел никакой реакции переспроси
     else:
         twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.pst_hint, phone=phone,

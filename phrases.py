@@ -6,7 +6,10 @@ nt_vld_input = 'entered phone number is not valid. Could you retext it, please'
 
 sorry_4_bothr = 'OK, thanks and sorry for bothering you.'
 
-keybrd_inp = 'Use the keyboard to enter the number, which you would like to receive an offer'
+keybrd_inp_ph = 'Use the keyboard to enter the number, which you would like to receive an offer'
+
+keybrd_inp_ml = 'Use the keyboard to enter the milleage of your car.'
+
 
 bye = 'Take care and goodbye for now.'
 

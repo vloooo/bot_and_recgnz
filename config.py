@@ -9,7 +9,7 @@ account_sid = 'AC799bc469db94104aba57b5d861847eab'
 auth_token = '98d062d6a7b5327f6e59f15901a63c93'
 unwanted_inf = ['first_ques', 'pst', 'ngt', 'again_key', 'img_url']
 unwanted_for_webform_inf = ['first_ques', 'pst', 'ngt', 'cnvrs_key', 'number_of_calls', 'again_key', 'stage',
-                            'call_day', 'accept', 'img_url']
+                            'call_day', 'img_url']
 finaly_number_of_calls = 4
 percent_of_new = 50
 number_of_calls_per_time = 20

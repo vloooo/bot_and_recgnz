@@ -8,6 +8,8 @@ import DetectChars
 import DetectPlates
 
 # module level variables ##########################################################################
+import Preprocess
+
 SCALAR_BLACK = (0.0, 0.0, 0.0)
 SCALAR_WHITE = (255.0, 255.0, 255.0)
 SCALAR_YELLOW = (0.0, 255.0, 255.0)
@@ -18,50 +20,36 @@ showSteps = False
 counter = 0
 
 def main(image):
-    # CnnClassifier = DetectChars.loadCNNClassifier()  # attempt KNN training
-    #
-    # if CnnClassifier == False:  # if KNN training was not successful
-    #     print("\nerror: CNN traning was not successful\n")  # show error message
-    #     return  # and exit program
 
     resp = urllib.request.urlopen(image)
     image = np.asarray(bytearray(resp.read()), dtype="uint8")
     imgOriginalScene = cv2.imdecode(image, cv2.IMREAD_COLOR)
     # imgOriginalScene = cv2.imread(image)  # open image
-    # plt.imshow(imgOriginalScene)
-    '''
-    cv2.imshow("cropped", imgOriginalScene)
-    cv2.waitKey(0)
-    '''
+
     h, w = imgOriginalScene.shape[:2]
     crop_img = imgOriginalScene[int(h / 100 *40): h - 40, 40: w - 40]
-    '''
-    cv2.imshow("cropped", crop_img)
-    cv2.waitKey(0)
-    '''
-    # imoo = imgOriginalScene.copy()
+
+
     imgOriginalScene = crop_img
-
-    # As the image may be blurr so we sharpen the image.
-    # kernel_shapening4 = np.array([[-1,-1,-1],[-1,9,-1],[-1,-1,-1]])
-    # imgOriginalScene = cv2.filter2D(imgOriginalScene,-1,kernel_shapening4)
-
-    # imgOriginalScene = cv2.resize(imgOriginalScene,(1000,600),interpolation = cv2.INTER_LINEAR)
 
     imgOriginalScene = cv2.resize(imgOriginalScene, (0, 0), fx=1.4, fy=1.4, interpolation=cv2.INTER_CUBIC)
 
 
     if imgOriginalScene is None:  # if image was not read successfully
         print("\nerror: image not read from file \n\n")  # print error message to std out
-        os.system("pause")  # pause so user can see error message
+        # os.system("pause")  # pause so user can see error message
         return  # and exit program
+
 
     listOfPossiblePlates = DetectPlates.detectPlatesInScene(imgOriginalScene)  # detect plates. We get a list of
     # combinations of contours that may be a plate.
+    if len(listOfPossiblePlates) > 1:
+        listOfPossiblePlates = [choose_plateE(listOfPossiblePlates)]
 
     listOfPossiblePlates = DetectChars.detectCharsInPlates(listOfPossiblePlates)  # detect chars in plates
 
     listOfPossiblePlates = [x for x in listOfPossiblePlates if len(x.strChars)<8]
+
 
 
     if len(listOfPossiblePlates) == 0:  # if no plates were found
@@ -192,42 +180,59 @@ def validate_for_britain(line):
             line = line[:j] + "A" + line[j + 1:]
     return line
 
+
+
+def choose_plateE(listOfPsbPlates):
+    dif_list = []
+    for image in listOfPsbPlates:
+
+        image = image.imgPlate
+        image_CP = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # cp_CP = copy.deepcopy(image_CP)
+        _, image, _ = Preprocess.preprocessS_without_crop(image)
+        # cv2.imshow('image_masked.png', image)
+        # cv2.waitKey(0)
+
+        listOfPossibleChars, numberOfChars, noneChar = Preprocess.find_psbl_chr_4broken(image)
+        # print(len(listOfPossibleChars))
+        if len(listOfPossibleChars) < 4:
+            dif_list.append(100)
+            continue
+
+        listOfPossibleChars = sorted(listOfPossibleChars, key=lambda obj: obj.intCenterX)
+
+        let_area = []
+        for i in listOfPossibleChars:
+            let_area.append(i.intBoundingRectY + i.intBoundingRectHeight)
+        Ar = np.mean(let_area)
+
+        df = []
+        for i in listOfPossibleChars:
+            df.append(abs(Ar - (i.intBoundingRectY + i.intBoundingRectHeight)))
+            # print(df)
+        df = np.mean(df)
+        dif_list.append(df)
+    # print(dif_list)
+    new_list = [x for x in dif_list if x == 100]
+    if len(new_list) == len(dif_list):
+        dif_list = []
+        for image in listOfPsbPlates:
+
+            image = image.imgPlate
+            _, image, _ = Preprocess.preprocessS_without_crop(image)
+
+            listOfPossibleChars, numberOfChars, noneChar = Preprocess.find_psbl_chr_intrnl(image)
+
+            if len(listOfPossibleChars) < 5:
+                dif_list.append(100)
+                continue
+            dif_list.append(0)
+
+    return listOfPsbPlates[np.argmin(dif_list)]
+
+
+
 if __name__ == "__main__":
-    """
-    i = 0
-    length = 0
-    score = 0
-    start = time.time()
-    result = []
-    count = 0
-    os.chdir('Test_car_images_dataset')
-    for f in os.listdir():
-        y_test,ext = os.path.splitext(f)
-        y_pred,_ = main(f)
-        length = length + len(y_test)
-        if len(y_test)<len(y_pred):
-            y_test = y_test + ' '*(len(y_pred)-len(y_test))
-            count = count + 1
-        else:
-            y_pred = y_pred + ' '*(len(y_test)-len(y_pred))
-            count = count + 1
-        y_test = np.array(list(str(y_test)))
-        y_pred = np.array(list(str(y_pred)))
-        print(y_test,' ',y_pred)
-        #score = score + (y_test == y_pred).sum()
-        count = 0
-        for t in y_pred:
-            if t in y_test:
-                score = score + 1
-                count = count + 1
-        accuracy = (score*100)/length
-        new = 'Accuarcy at the '+str(i)+' th image '+f+ ' is :'+str(accuracy)
-        print(new,'\n','The count is: ',count)
-        #result.append(result)
-        i = i + 1
-    print('time taken :',time.time() - start)
-    #print(result)
-    """
 
     dirnrm = '/home/user/PycharmProjects/plates/cars/forTest'
     dirnrmN = '/home/user/PycharmProjects/plates/cars/new/norm'

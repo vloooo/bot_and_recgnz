@@ -1,12 +1,7 @@
-import string
 from random import shuffle
-
 from flask import Flask, request
-import spacy
 from ents import ents, subjects
 import pandas as pd
-from nltk.stem import WordNetLemmatizer
-import re
 import warnings
 from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Gather
@@ -18,7 +13,6 @@ import time
 import requests
 import config
 from datetime import datetime
-from word2number import w2n
 import tensorflow as tf
 import Main
 from keras.models import load_model
@@ -26,11 +20,9 @@ from keras.optimizers import RMSprop
 import io
 import speech_recognition as sr
 from urllib.request import urlopen
-import nltk
 import cv2
 
-nltk.download('wordnet')
-model = load_model('char-reg.h5')
+model = load_model('modelL2.h5')
 model.compile(optimizer=RMSprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.005), loss='categorical_crossentropy',
               metrics=['accuracy'])
 graph = tf.get_default_graph()
@@ -48,7 +40,6 @@ echo_url = config.echo_url
 start_url = config.start_url
 
 ngrok_url = config.ngrok_url
-nlp = spacy.load('en_core_web_md')
 app = Flask(__name__)  # работа с вебом
 
 out = pd.DataFrame(
@@ -80,69 +71,13 @@ def find_service_hist(client_speech, phone):
     return found
 
 
+
 def find_city(client_speech, phone):
-    doc = nlp(client_speech)
-    for ent in doc.ents:
-        # print(ent.label_, ent.text)
-        if ent.label_ == 'GPE':
-            out['city'][out['phone'] == phone] = ent.text
-
+    for i in ents.cities:
+        if i.lower() in client_speech.lower():
+            out['city'][out['phone'] == phone] = i
             return True
     return False
-
-
-def find_mileage(client_speech, phone):
-    clear = client_speech.replace(".", "")  # lower case
-
-    clear_lower = clear.lower()  # lemmatisation
-
-    lemmer = WordNetLemmatizer()
-    tokens = clear_lower.split()
-    lemm = [lemmer.lemmatize(token) for token in tokens]
-    lemm_str = ' '.join(lemm)
-
-    doc = nlp(w2n.word_to_num(lemm_str))
-
-    # Перезаписывание ответа клиента в файл
-    for ent in doc.ents:
-        # print(ent.label_, ent.text)
-        if ent.label_ == 'QUANTITY' or ent.label_ == 'CARDINAL':
-            out['mileage'][out.phone == phone] = ent.text
-            return True
-    return False
-
-
-def find_plate(client_speech, phone):
-    found = False
-    translation = {ord(x): None for x in string.punctuation}
-
-    client_speech = client_speech.translate(translation)
-
-    clue_str = client_speech.replace(" ", "")
-    plate_format_1 = re.findall(r'[a-z][0-9]{3}[a-z]{3}', clue_str)
-    plate_format_2 = re.findall(r'[a-z][0-9]{2}[a-z]{3}', clue_str)
-
-    if plate_format_1:
-        out['reg_num'][out['phone'] == phone] = plate_format_1[0].upper()
-        found = True
-    elif plate_format_2:
-        plate_format = re.findall(r'[a-z][0-9]{2}[a-z]{3}', clue_str)
-        tmp_str = plate_format[0][0] + ' ' + plate_format[0][1:3]
-        pos_plate = client_speech.find(tmp_str)
-        if pos_plate == -1:
-            tmp_str = plate_format[0][:3]
-            pos_plate = client_speech.find(tmp_str)
-
-        if pos_plate == 0 or (
-                pos_plate > 2 and client_speech[pos_plate - 3] != ' ' and client_speech[pos_plate - 1] == ' '):
-            plate_format_2 = re.findall(r'[a-z][0-9]{2}[a-z]{3}', clue_str)
-            out['reg_num'][out['phone'] == phone] = plate_format_2[0].upper()
-            found = True
-
-        elif client_speech[pos_plate - 1] != ' ' or pos_plate - 3 == -1 or client_speech[pos_plate - 3] == ' ':
-            plate_format_2 = re.findall(r'[a-z]{2}[0-9]{2}[a-z]{3}', clue_str)
-            out['reg_num'][out['phone'] == phone] = plate_format_2[0].upper()
-            found = True
 
 
 #######################################################################################################################
@@ -304,10 +239,10 @@ def undrstnd_newcall_recall(phone, form):
         out['first_ques'][out.phone == phone] = False
         return 'YES'
     else:
-        url = request.form.get('RecordingUrl')
+        url = form.get('RecordingUrl')
         data = io.BytesIO(urlopen(url).read())
-
         r = sr.Recognizer()
+
         with sr.AudioFile(data) as source:
             audio_ = r.record(source)
 
@@ -624,8 +559,8 @@ def question5_1():
     global out
     url = request.form.get('RecordingUrl')
     data = io.BytesIO(urlopen(url).read())
-
     r = sr.Recognizer()
+
     with sr.AudioFile(data) as source:
         audio_ = r.record(source)
 
@@ -724,8 +659,8 @@ def question7():
     else:
         url = request.form.get('RecordingUrl')
         data = io.BytesIO(urlopen(url).read())
-
         r = sr.Recognizer()
+
         with sr.AudioFile(data) as source:
             audio_ = r.record(source)
 
@@ -755,8 +690,8 @@ def question8():
     """
     url = request.form.get('RecordingUrl')
     data = io.BytesIO(urlopen(url).read())
-
     r = sr.Recognizer()
+
     with sr.AudioFile(data) as source:
         audio_ = r.record(source)
 

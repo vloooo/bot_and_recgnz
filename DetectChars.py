@@ -15,22 +15,22 @@ np.set_printoptions(threshold=np.nan)
 
 # module level variables ##########################################################################
 # constants for checkIfPossibleChar, this checks one possible char only (does not compare to another char)
-MIN_PIXEL_WIDTH = 5 ########################3
+MIN_PIXEL_WIDTH = 3 ########################3
 MIN_PIXEL_HEIGHT = 15 ######################8
 
-MIN_ASPECT_RATIO = 0.15
-MAX_ASPECT_RATIO = 1
+MIN_ASPECT_RATIO = 0.1######################0.15
+MAX_ASPECT_RATIO = 1.4
 
 MIN_PIXEL_AREA = 100
 
 # constants for comparing two chars
 MIN_DIAG_SIZE_MULTIPLE_AWAY = 0.2
-MAX_DIAG_SIZE_MULTIPLE_AWAY = 5.0
+MAX_DIAG_SIZE_MULTIPLE_AWAY = 6.0
 
 MAX_CHANGE_IN_AREA = 0.5
 
 MAX_CHANGE_IN_WIDTH = 1  ###############0.8
-MAX_CHANGE_IN_HEIGHT = 0.5  ###########0.2
+MAX_CHANGE_IN_HEIGHT = 0.3  ###########0.2
 
 MAX_ANGLE_BETWEEN_CHARS = 12.0
 
@@ -41,14 +41,14 @@ RESIZED_CHAR_IMAGE_WIDTH = 64
 RESIZED_CHAR_IMAGE_HEIGHT = 64
 
 MIN_CONTOUR_AREA = 100
-model = load_model('char-reg.h5')
+# model = load_model('char-reg.h5')
 
 
 ###################################################################################################
-def loadCNNClassifier():
-    model.compile(optimizer=RMSprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.005), loss='categorical_crossentropy',
-                  metrics=['accuracy'])
-    return True  ###################################################################################################
+# def loadCNNClassifier():
+#     model.compile(optimizer=RMSprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.005), loss='categorical_crossentropy',
+#                   metrics=['accuracy'])
+#     return True  ###################################################################################################
 
 
 def detectCharsInPlates(listOfPossiblePlates):
@@ -92,7 +92,7 @@ def detectCharsInPlates(listOfPossiblePlates):
         listOfPossibleCharsInPlate = findPossibleCharsInPlate(possiblePlate.imgGrayscale, possiblePlate.imgThresh)
 
         '''
-        if  Main.showSteps == True: # show steps ###################################################
+        if   True: # show steps ###################################################
             height, width, numChannels = possiblePlate.imgPlate.shape
             imgContours = np.zeros((500, 500, 3), np.uint8)
             del contours[:]                                         # clear the contours list
@@ -111,18 +111,14 @@ def detectCharsInPlates(listOfPossiblePlates):
         # given a list of all possible chars, find groups of matching chars within the plate
         listOfListsOfMatchingCharsInPlate = findListOfListsOfMatchingChars_Char(listOfPossibleCharsInPlate)
         if (len(listOfListsOfMatchingCharsInPlate) == 0):  # if no groups of matching chars were found in the plate
-            '''
-            if Main.showSteps == True: # show steps ###############################################
-                print("chars found in plate number " + str(intPlateCounter) + " = (none), click on any image and press a key to continue . . .")
-                intPlateCounter = intPlateCounter + 1
-            '''
+
 
             possiblePlate.strChars = ""
             continue  # go back to top of for loop
         # end if
         '''
-        if Main.showSteps == True: # show steps ###################################################
-            imgContours = np.zeros((300, 300, 3), np.uint8)
+        if  True: # show steps ###################################################
+            imgContours = np.zeros((300, 500, 3), np.uint8)
             del contours[:]
 
             for listOfMatchingChars in listOfListsOfMatchingCharsInPlate:
@@ -233,16 +229,13 @@ def findPossibleCharsInPlate(imgGrayscale, imgThresh):
     for contour in range(len(contours)):  # for each contour
         possibleChar = PossibleChar.PossibleChar(contours[contour])
 
-        if checkIfPossibleChar(
-                possibleChar):  # if contour is a possible char, note this does not compare to other chars (yet) . . .
+        if Preprocess.checkIfPossibleChar_PreProc(possibleChar):
             listOfPossibleChars.append(possibleChar)
-
-            # cv2.drawContours(imgContours, contours, contour, Main.SCALAR_WHITE)
-            # cv2.imshow('kontur', imgContours)
-            # cv2.waitKey(0)
-            # add to list of possible chars
-        # end if
-    # end if
+            '''
+            cv2.drawContours(imgContours, contours, contour, Main.SCALAR_WHITE)
+            cv2.imshow('kontur', imgContours)
+            cv2.waitKey(0)
+            '''
 
     return listOfPossibleChars
 
@@ -261,8 +254,10 @@ def checkIfPossibleChar(possibleChar):
         return False
 
 
+
+
 ###################################################################################################
-def findListOfListsOfMatchingChars(listOfPossibleChars, img):
+def findListOfListsOfMatchingChars_Plate(listOfPossibleChars, img):
     listOfListsOfMatchingChars = []  # this will be the return value
     # print("Now we check which contours are similar")
 
@@ -277,16 +272,14 @@ def findListOfListsOfMatchingChars(listOfPossibleChars, img):
         # cv2.imshow("2b", imgContours)
         # cv2.waitKey(0)
 
-        listOfMatchingChars = findListOfMatchingChars(possibleChar,
-                                                      listOfPossibleChars,
-                                                      img)  # find all chars in the big list that match the current char
+        listOfMatchingChars = findListOfMatchingChars(possibleChar, listOfPossibleChars, img)
         listOfMatchingChars.append(possibleChar)  # also add the current char to current possible list of matching chars
         if len(
                 listOfMatchingChars) < MIN_NUMBER_OF_MATCHING_CHARS:  # if current possible list of matching chars is not long enough to constitute a possible plate
             continue
         listOfListsOfMatchingChars.append(listOfMatchingChars)
         listOfPossibleCharsWithCurrentMatchesRemoved = list(set(listOfPossibleChars) - set(listOfMatchingChars))
-        recursiveListOfListsOfMatchingChars = findListOfListsOfMatchingChars(
+        recursiveListOfListsOfMatchingChars = findListOfListsOfMatchingChars_Plate(
             listOfPossibleCharsWithCurrentMatchesRemoved, img)
         for recursiveListOfMatchingChars in recursiveListOfListsOfMatchingChars:  # for each list of matching chars found by recursive call
             listOfListsOfMatchingChars.append(recursiveListOfMatchingChars)
@@ -310,8 +303,8 @@ def findListOfMatchingChars(possibleChar, listOfChars, img):
     centerY.append(possibleChar.intBoundingRectY)
     # print('\n\n')
     # imgContours = np.zeros([img.shape[0], img.shape[1], 3])
-    listOfMatchingChars.sort(
-        key=lambda matchingChar: matchingChar.intCenterX)  # sort chars from left to right based on x position
+    listOfMatchingChars = sorted(listOfMatchingChars, key=lambda x: x.intCenterX)
+
     # imgContours = np.zeros([img.shape[0], img.shape[1], 3])
     # cv2.drawContours(imgContours, possibleChar.contour, -1, Main.SCALAR_WHITE)
     #
@@ -350,8 +343,8 @@ def findListOfMatchingChars(possibleChar, listOfChars, img):
             fltChangeInArea < MAX_CHANGE_IN_AREA and
             fltChangeInWidth < MAX_CHANGE_IN_WIDTH and
             fltChangeInHeight < MAX_CHANGE_IN_HEIGHT) and \
-                abs(possibleMatchingChar.intBoundingRectX - np.mean(center)) < img.shape[1] / 100 * 15 and \
-                abs(possibleMatchingChar.intBoundingRectY - np.mean(centerY)) < img.shape[0] / 100 * 2:
+                abs(possibleMatchingChar.intBoundingRectX - np.mean(center)) < img.shape[1] / 100 * 17 and \
+                abs(possibleMatchingChar.intBoundingRectY - np.mean(centerY)) < img.shape[0] / 100 * 3:
             center.append(possibleMatchingChar.intCenterX)
             centerY.append(possibleMatchingChar.intBoundingRectY)
 
@@ -419,12 +412,7 @@ def removeInnerOverlappingChars(listOfMatchingChars):
                     else:  # else if other char is smaller than current char
                         if otherChar in listOfMatchingCharsWithInnerCharRemoved:  # if other char was not already removed on a previous pass . . .
                             listOfMatchingCharsWithInnerCharRemoved.remove(otherChar)  # then remove other char
-                        # end if
-                    # end if
-                # end if
-            # end if
-        # end for
-    # end for
+
 
     return listOfMatchingCharsWithInnerCharRemoved
 
@@ -480,8 +468,10 @@ def recognizeCharsInPlate(imgThresh, listOfMatchingChars):
         imgROIResized = cv2.resize(imgROI, (RESIZED_CHAR_IMAGE_WIDTH, RESIZED_CHAR_IMAGE_HEIGHT),
                                    interpolation=cv2.INTER_LINEAR)  # resize image, this is necessary for char recognition
 
-        # cv2.imshow('letter', imgROI)
-        # cv2.waitKey(0)
+        cv2.imshow('letter', imgROI)
+        # print(pytesseract.image_to_string(imgThresh))
+
+        cv2.waitKey(0)
 
         """
         response = str(input('Want to save the image: '))
@@ -499,15 +489,19 @@ def recognizeCharsInPlate(imgThresh, listOfMatchingChars):
             # print(botSum/topSum)
             # print(imgForCount)
             # print(topAr, '\n', botAr, '\n\n\n')
-            topAr, botAr, topSum, botSum = find_full_lines(imgForCount)
+            topAr, botAr, topSum, botSum, cn = find_full_lines(imgForCount)
             m_key = True
-            if len(topAr) > 0 and topAr[-1] / topAr[0] < 0.45 and len(botAr) > 0 and botAr[0] / botAr[-1] < 0.7 and \
-                    (classes[0] == 17 or classes[0] == 20):
+
+            if len(topAr) > 0 and topAr[-1] / topAr[0] < 0.45 and len(botAr) > 0 and (
+                    botAr[0] / botAr[-1] < 0.85 or botAr[0] / botAr[-1] > 1) and \
+                    cn > 1 and (classes[0] == 17 or classes[0] == 20 or classes[0] == 22):
                 # print('MMMMMMMMMMMMMMMMMMMMM')
                 classes[0] = 22
                 m_key = False
 
             if topSum > botSum and botSum / topSum < 0.77 and botSum / topSum > 0.1 and m_key:
+                # print(topAr[-1] / topAr[0], '\n', botAr, classes[0], '\n\n\n')
+
                 classes[0] = 32
                 # print('WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW')
 
@@ -516,7 +510,7 @@ def recognizeCharsInPlate(imgThresh, listOfMatchingChars):
 
         if classes[0] == 21 or classes[0] == 10:
             imgForCount = crop_letter(imgROIgray)
-            topAr, botAr, topSum, botSum = find_full_lines(imgForCount)
+            topAr, botAr, topSum, botSum, _ = find_full_lines(imgForCount)
             # print(topAr, botAr, topSum, botSum)
             if len(topAr) > 0 and len(botAr) > 0 and botSum > 1 and topSum > 1:
                 classes[0] = 10
@@ -533,15 +527,18 @@ def recognizeCharsInPlate(imgThresh, listOfMatchingChars):
         # newRoi = imgROI[top:bottom, left:right]
         # cv2.imshow('llllllll', newRoi)
         # cv2.waitKey(0)
-
+        # print(classes)
         if classes[0] < 10:
             strCurrentChar = chr(classes[0] + 48)  # get character from results
         else:
             strCurrentChar = chr(classes[0] + 55)  # get character from results
             # print(classes[0], strCurrentChar)
 
-        if Main.showSteps == True:
-            print(strCurrentChar, classes[0])
+        # path = 'data/train/'+ strCurrentChar+'/'+ str(len(os.listdir('data/train/'+ strCurrentChar+'/'))) + '.png'
+        # print(strCurrentChar)
+        # print(path)
+        #
+        # # cv2.imwrite(path, imgROIResized)
         strChars = strChars + strCurrentChar  # append current char to full string
 
     # end for
@@ -555,6 +552,7 @@ def recognizeCharsInPlate(imgThresh, listOfMatchingChars):
     return strChars
 
 
+
 # end function
 
 
@@ -562,7 +560,7 @@ def findListOfListsOfMatchingChars_Char(listOfPossibleChars):
     listOfListsOfMatchingChars = []  # this will be the return value
     # print("Now we check which contours are similar")
 
-    listOfPossibleChars = sorted(listOfPossibleChars, key=lambda obj: obj.intCenterX, reverse=True)
+    listOfPossibleChars = sorted(listOfPossibleChars, key=lambda obj: obj.intCenterX)
 
     for possibleChar in listOfPossibleChars:  # for each possible char in the one big list of chars
 
@@ -590,14 +588,14 @@ def findListOfListsOfMatchingChars_Char(listOfPossibleChars):
 
 
 MIN_DIAG_SIZE_MULTIPLE_AWAYC = 0.3
-MAX_DIAG_SIZE_MULTIPLE_AWAYC = 7.0
+MAX_DIAG_SIZE_MULTIPLE_AWAYC = 10.0
 
 MAX_CHANGE_IN_AREAC = 1
 
-MAX_CHANGE_IN_WIDTHC = 0.8
+MAX_CHANGE_IN_WIDTHC = 1
 MAX_CHANGE_IN_HEIGHTC = 0.3
 
-MAX_ANGLE_BETWEEN_CHARSC = 21.0
+MAX_ANGLE_BETWEEN_CHARSC = 33.0
 
 
 def findListOfMatchingChars_Char(possibleChar, listOfChars):
@@ -712,15 +710,12 @@ def find_full_lines(imgForCount):
                             botAr.append(tmp)
                         else:
                             botAr[-1] += tmp
-                        u = botAr[-1]
                     else:
                         topSum += tmp
                         if not curSt:
                             topAr.append(tmp)
                         else:
                             topAr[-1] += tmp
-                        u = topAr[-1]
-                    # print(str,'            ', u)
 
                     curSt = True
                     tmp = 1
@@ -729,4 +724,30 @@ def find_full_lines(imgForCount):
                     tmp += 1
         else:
             switchKey = True
-    return topAr, botAr, topSum, botSum
+
+
+    # print(imgForCount)
+    maximums = list(maximums)
+    countr = 0
+    try:
+        countr = []
+        indx = len(maximums) - 1 - maximums[::-1].index(1) + 3
+        # print(imgForCount[indx:])
+        for j in imgForCount[indx:]:
+            startKey = False
+            line = j
+            countr.append(0)
+            for i in range(len(line) - 2):
+                if line[i] == 1 and line[i + 1] == 0:
+                    startKey = True
+                elif line[i] == 0 and line[i + 1] == 1 and startKey:
+                    startKey = False
+                    countr[len(countr)-1] += 1
+        countr = np.max(countr)
+    except:
+        line = imgForCount[0]
+
+    # print(countr)
+
+
+    return topAr, botAr, topSum, botSum, countr

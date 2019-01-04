@@ -67,8 +67,8 @@ def preprocessS(imgOriginal):
 
 
     # im= cv2.fastNlMeansDenoising(imgBl, h=1, templateWindowSize=3, searchWindowSize=3)
-    cv2.imshow('plate', im)
-    cv2.waitKey(0)
+    # cv2.imshow('plate', im)
+    # cv2.waitKey(0)
 
 
     imgThresh = half_thresh(im)
@@ -135,11 +135,11 @@ def preprocessS(imgOriginal):
     lst = []
     for i in listOfPossibleChars:
         lst.append(i.contour)
-    cv2.drawContours(imgContoursd, lst, -1, Main.SCALAR_WHITE)
-    cv2.imshow('konturh', imgContoursd)
-    # cv2.imshow('kontur2h', imgContours)
-
-    cv2.waitKey(0)
+    # cv2.drawContours(imgContoursd, lst, -1, Main.SCALAR_WHITE)
+    # cv2.imshow('konturh', imgContoursd)
+    # # cv2.imshow('kontur2h', imgContours)
+    #
+    # cv2.waitKey(0)
 
 
 
@@ -188,8 +188,8 @@ def preprocessS(imgOriginal):
     kernel = np.ones((3, 3), np.uint8)
     imgForRcgnz = cv2.erode(imgForRcgnz, kernel)
     # imgContours =
-    cv2.imshow('Erod', imgContours)
-    cv2.waitKey(0)
+    # cv2.imshow('Erod', imgContours)
+    # cv2.waitKey(0)
     return imgGrayscale, imgContours, imgForRcgnz
 
 
@@ -627,15 +627,15 @@ def new_kray_fill(imgThresh, imgGrayScale, listOfPossibleChars):
             imgGrayScale = imgGrayScale[:, :indx2]
 
             break
-    cv2.imshow('loljjjjjjjjjjjdjj', imgThresh)
-    cv2.waitKey(0)
+    # cv2.imshow('loljjjjjjjjjjjdjj', imgThresh)
+    # cv2.waitKey(0)
 
-    plt.plot(hist)
-    plt.plot([0, height], [border, border])
-    plt.plot([indx, indx], [np.max(hist), np.min(hist)])
-    #
-    #
-    plt.show()
+    # plt.plot(hist)
+    # plt.plot([0, height], [border, border])
+    # plt.plot([indx, indx], [np.max(hist), np.min(hist)])
+    # #
+    # #
+    # plt.show()
 
     return imgThresh, imgGrayScale
 
@@ -840,8 +840,8 @@ def preprocessS_without_crop(imgOriginal):
     kernel = np.ones((3, 3), np.uint8)
     imgForRcgnz = cv2.erode(imgForRcgnz, kernel)
     # imgContours =
-    cv2.imshow('Erod', imgContours)
-    cv2.waitKey(0)
+    # cv2.imshow('Erod', imgContours)
+    # cv2.waitKey(0)
     return imgGrayscale, imgContours, imgForRcgnz
 
 

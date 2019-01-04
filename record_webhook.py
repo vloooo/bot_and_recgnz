@@ -43,12 +43,12 @@ ngrok_url = config.ngrok_url
 app = Flask(__name__)  # работа с вебом
 
 out = pd.DataFrame(
-    {"reg_num": ['AS 123 SD', None, None], "mileage": ['1500', None, None], "city": ['London', None, None],
-     "phone": ["+380669631139", "+380959293096", "+3333333333333"], "phone_for_offer": [None, None, None],
-     "serv_hist": [None, None, None], 'again_key': [False, False, False], 'stage': [1, 1, 1],
-     'pst': [False, False, False], 'ngt': [False, False, False], 'cnvrs_key': [0, 1, 2], 'number_of_calls': [0, 0, 3],
-     'first_ques': [True, True, True], 'call_day': [0, 0, 0], 'accept': [None, None, None], 'img_url':
-     [None, None, None]})
+    {"reg_num": [''], "mileage": [10000], "city": [''],
+     "phone": [''], "phone_for_offer": [''],
+     "serv_hist": [''], 'again_key': [True], 'stage': [1],
+     'pst': [True], 'ngt': [True], 'cnvrs_key': [3], 'number_of_calls': [9],
+     'first_ques': [False], 'call_day': [0], 'accept': [None], 'img_url':
+     ['']})
 tokens = ['7eb82f1ed5e6ceeca6b26f8316b31717fde0bb25', 'f9e106e2c0a0c6a2493181fd724cdb7b89600af9',
           '9118e9c1b2a3f65c39b8d90453db99165fb201f0', '0e8c566ad072d543aae409d576012ee4e98a766e']
 quiq_recall_phones = []
@@ -65,7 +65,7 @@ def find_service_hist(client_speech, phone):
     words = client_speech.lower().split()
     for word in words:
         if word in ents.serv_hist:
-            out['service history'][out.phone == phone] = ents.serv_hist_kind[word]
+            out['serv_hist'][out.phone == phone] = ents.serv_hist_kind[word]
             found = True
             break
     return found
@@ -91,7 +91,7 @@ def collect_speech_gather(text, hints, phone_number, rsp, sufix=''):
     """
     stg = str(out[out.phone == phone_number]['stage'].values[0])
     rsp.say(text)
-    rsp.record(finish_on_key='*', play_beep=False, timeout=4, action=ngrok_url + stg + sufix, max_length=15)
+    rsp.record(finish_on_key='*', play_beep=False, timeout=config.timeout, action=ngrok_url + stg + sufix, max_length=15)
 
     return rsp
 
@@ -100,12 +100,15 @@ def collect_redirect_speech(phone):
     """
 
     """
+    global out
     response = VoiceResponse()
 
     response.say('Hi, I am phoning you again to talk about your car. Last time we stoped on ' +
                  subjects[out['stage'][out.phone == phone].values[0] - 2])
 
     response.redirect(ngrok_url + str(out['stage'][out.phone == phone].values[0] - 1))
+    out['stage'][out.phone == phone] = out['stage'][out.phone == phone].values[0] - 1
+
     return response.to_xml()
 
 
@@ -114,7 +117,7 @@ def collect_dgt_gather(text, phone, sufix=''):
 
     """
     stg = str(out[out.phone == phone]['stage'].values[0])
-    gather = Gather(input='dtmf', numDigits="10", timeout=8, action=ngrok_url + stg + sufix, finish_on_key='*')
+    gather = Gather(input='dtmf', numDigits="10", timeout=6, action=ngrok_url + stg + sufix, finish_on_key='*')
     gather.say(text)
     return gather
 
@@ -245,8 +248,12 @@ def undrstnd_newcall_recall(phone, form):
 
         with sr.AudioFile(data) as source:
             audio_ = r.record(source)
-
-        client_speech = r.recognize_google(audio_)
+        try:
+            client_speech = r.recognize_google(audio_)
+        except sr.UnknownValueError:
+            client_speech = 'repeat'
+        except sr.RequestError:
+            client_speech = 'repeat'
         write_user_answer(text=client_speech, phone=phone)
         return client_speech
 
@@ -352,6 +359,7 @@ def question3():
         Да --> это ваш пробег
         Нет --> могу я уточнить ваш регестрационный номер
     """
+    global out
 
     phone, client_speech, ngt_txt = get_stage_values(request.form)
 
@@ -363,7 +371,6 @@ def question3():
 
     elif neg:
 
-        global out
         resp = urlopen(str(out['img_url'][out['phone'] == phone].values[0]))
         image = np.asarray(bytearray(resp.read()), dtype="uint8")
         imgOriginalScene = cv2.imdecode(image, cv2.IMREAD_COLOR)
@@ -564,7 +571,12 @@ def question5_1():
     with sr.AudioFile(data) as source:
         audio_ = r.record(source)
 
-    client_speech = r.recognize_google(audio_)
+    try:
+        client_speech = r.recognize_google(audio_)
+    except sr.UnknownValueError:
+        client_speech = 'repeat'
+    except sr.RequestError:
+        client_speech = 'repeat'
     phone = request.form.get('To')
     write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
@@ -664,7 +676,12 @@ def question7():
         with sr.AudioFile(data) as source:
             audio_ = r.record(source)
 
-        client_speech = r.recognize_google(audio_)
+        try:
+            client_speech = r.recognize_google(audio_)
+        except sr.UnknownValueError:
+            client_speech = 'repeat'
+        except sr.RequestError:
+            client_speech = 'repeat'
         found = find_service_hist(client_speech, phone)
         write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
@@ -695,7 +712,12 @@ def question8():
     with sr.AudioFile(data) as source:
         audio_ = r.record(source)
 
-    client_speech = r.recognize_google(audio_)
+    try:
+        client_speech = r.recognize_google(audio_)
+    except sr.UnknownValueError:
+        client_speech = 'repeat'
+    except sr.RequestError:
+        client_speech = 'repeat'
     phone = request.form.get('To')
     pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
     write_user_answer(text='dictate: ' + client_speech, phone=phone)
@@ -736,11 +758,11 @@ def del_person():
 
 
 @app.route('/send', methods=['GET', 'POST'])
-def send_inf():
+def send_inf(phone):
     """
 
     """
-    phone = config.phone_for_test
+    # phone = config.phone_for_test
     unsend_inf = config.unwanted_for_webform_inf
     pers = out[out.phone == phone].drop(unsend_inf, axis=1)
     pers = pers.to_dict('records')[0]
@@ -777,6 +799,7 @@ def call_auto():
     """
     while True:
         if config.lower_limit <= datetime.utcnow().hour < config.upper_limit:
+            print('ddd')
             make_calls()
             time.sleep(config.sleep_min * 60)
         else:
@@ -789,6 +812,7 @@ def make_calls():
     """
     совершает звонок, если имеются подходящие записи
     """
+
     global quiq_recall_phones
     number_of_calls = np.max([config.number_of_calls_per_time - quiq_recalls(), 2])
 
@@ -878,7 +902,6 @@ def extract_num():
         df = xls.parse(xls.sheet_names[0], converters={"phone": str})
 
         req = df.to_dict()
-
         req['reg_num'] = {}
 
         with graph.as_default():

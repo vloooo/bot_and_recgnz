@@ -468,10 +468,10 @@ def recognizeCharsInPlate(imgThresh, listOfMatchingChars):
         imgROIResized = cv2.resize(imgROI, (RESIZED_CHAR_IMAGE_WIDTH, RESIZED_CHAR_IMAGE_HEIGHT),
                                    interpolation=cv2.INTER_LINEAR)  # resize image, this is necessary for char recognition
 
-        cv2.imshow('letter', imgROI)
-        # print(pytesseract.image_to_string(imgThresh))
-
-        cv2.waitKey(0)
+        # cv2.imshow('letter', imgROI)
+        # # print(pytesseract.image_to_string(imgThresh))
+        #
+        # cv2.waitKey(0)
 
         """
         response = str(input('Want to save the image: '))

@@ -1,3 +1,4 @@
+import string
 from random import shuffle
 from flask import Flask, request
 from ents import ents, subjects
@@ -43,18 +44,18 @@ ngrok_url = config.ngrok_url
 app = Flask(__name__)  # работа с вебом
 
 out = pd.DataFrame(
-    {"reg_num": [''], "mileage": [10000], "city": [''],
-     "phone": [''], "phone_for_offer": [''],
-     "serv_hist": [''], 'again_key': [True], 'stage': [1],
-     'pst': [True], 'ngt': [True], 'cnvrs_key': [3], 'number_of_calls': [9],
-     'first_ques': [False], 'call_day': [0], 'accept': [None], 'img_url':
-     ['']})
+    {"reg_num": [''], "mileage": [10000], "city": [''], "phone": [''], "phone_for_offer": [''], 'number_of_calls': [9],
+     "serv_hist": [''], 'again_key': [True], 'stage': [1], 'pst': [True], 'ngt': [True], 'cnvrs_key': [3],
+     'first_ques': [False], 'call_day': [0], 'accept': [None], 'img_url': [''], 'repeat_qwe': [True]})
+
 tokens = ['7eb82f1ed5e6ceeca6b26f8316b31717fde0bb25', 'f9e106e2c0a0c6a2493181fd724cdb7b89600af9',
           '9118e9c1b2a3f65c39b8d90453db99165fb201f0', '0e8c566ad072d543aae409d576012ee4e98a766e']
 quiq_recall_phones = []
 
+
 #                                            find special values
 #######################################################################################################################
+
 def find_service_hist(client_speech, phone):
     """
 
@@ -71,13 +72,40 @@ def find_service_hist(client_speech, phone):
     return found
 
 
-
 def find_city(client_speech, phone):
+    translation = {ord(x): None for x in string.punctuation}
+    client_speech = client_speech.translate(translation).lower()
+
     for i in ents.cities:
-        if i.lower() in client_speech.lower():
+        if i.lower() in client_speech:
             out['city'][out['phone'] == phone] = i
             return True
+
+    client_speech = client_speech.split(' ')
+    for i in ents.part_of_cities:
+        if i.lower() in client_speech:
+            out['city'][out['phone'] == phone] = i
+            return True
+
     return False
+
+
+def find_plate(phone):
+    try:
+        resp = urlopen(str(out['img_url'][out['phone'] == phone].values[0]))
+        image = np.asarray(bytearray(resp.read()), dtype="uint8")
+        imgOriginalScene = cv2.imdecode(image, cv2.IMREAD_COLOR)
+        cv2.imwrite('tst.png', imgOriginalScene)
+
+        with open('tst.png', 'rb') as fp:
+            response = requests.post(
+                'https://platerecognizer.com/plate-reader/',
+                files=dict(upload=fp),
+                headers={'Authorization': 'Token ' + tokens[np.random.randint(4)]})
+
+        out['reg_num'][out['phone'] == phone] = response.json()['results'][0]['plate']
+    except:
+        out['reg_num'][out['phone'] == phone] = 'AA11AAA'
 
 
 #######################################################################################################################
@@ -91,7 +119,7 @@ def collect_speech_gather(text, hints, phone_number, rsp, sufix=''):
     """
     stg = str(out[out.phone == phone_number]['stage'].values[0])
     rsp.say(text)
-    rsp.record(finish_on_key='*', play_beep=False, timeout=config.timeout, action=ngrok_url + stg + sufix, max_length=15)
+    rsp.record(finish_on_key='*', play_beep=False, timeout=config.timeout, action=ngrok_url + stg + sufix, max_length=6)
 
     return rsp
 
@@ -229,7 +257,16 @@ def choose_rigth_answer(positive_text, negative_text, client_speech, phone, posi
                                               phone=phone, timeout=timeout)
 
     else:
-        twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=repeat_hint, phone=phone, add_step=False)
+        if out['repeat_qwe'][out['phone'] == phone].values[0]:
+            text = phrases.cld_u_rpt
+            set_repeat_qwe(phone=phone, key=False)
+
+        else:
+            text = 'could you repeat ' + ents.repeat_subj[out['stage'][out['phone'] == phone].values[0] - 1]
+            set_repeat_qwe(phone=phone, key=True)
+
+        twiml_xml = collect_2gathers_response(text=text, hints=repeat_hint, phone=phone, add_step=False)
+
     return str(twiml_xml)
 
 
@@ -316,6 +353,11 @@ def set_number_of_calls(phone):
     out['number_of_calls'][out.phone == phone] += 1
 
 
+def set_repeat_qwe(phone, key):
+    global out
+    out['repeat_qwe'][out['phone'] == phone] = key
+
+
 #                                                   question part
 ######################################################################################################################
 @app.route('/question1', methods=['GET', 'POST'])  # работа с вебом
@@ -367,73 +409,25 @@ def question3():
 
     if pos:
         twiml_xml = collect_2gathers_response(text='Can I confirm the mileage as ' + str(
-                                   out['mileage'][out.phone == phone].values[0]) + '?', hints='', phone=phone)
+            out['mileage'][out.phone == phone].values[0]) + '?', hints='', phone=phone)
 
     elif neg:
-
-        resp = urlopen(str(out['img_url'][out['phone'] == phone].values[0]))
-        image = np.asarray(bytearray(resp.read()), dtype="uint8")
-        imgOriginalScene = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        cv2.imwrite('tst.png', imgOriginalScene)
-
-        with open('tst.png', 'rb') as fp:
-            response = requests.post(
-                'https://platerecognizer.com/plate-reader/',
-                files=dict(upload=fp),
-                headers={'Authorization': 'Token ' + tokens[np.random.randint(4)]})
-
-        out['reg_num'][out['phone'] == phone] = response.json()['results'][0]['plate']
-
-        twiml_xml = collect_2gathers_response(text='Can I confirm the mileage as ' + str(
-                                   out['mileage'][out.phone == phone].values[0]) + '?', hints='', phone=phone, timeout='5')
+        find_plate(phone=phone)
+        twiml_xml = collect_2gathers_response(hints='', phone=phone, timeout='5',
+                                              text='Can I confirm the mileage as ' + str(
+                                                  out['mileage'][out.phone == phone].values[0]) + '?')
 
     else:
-        twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints='', phone=phone, add_step=False)
+        if out['repeat_qwe'][out['phone'] == phone].values[0]:
+            text = phrases.cld_u_rpt
+            set_repeat_qwe(phone=phone, key=False)
+
+        else:
+            text = 'could you repeat ' + out['reg_num'][out['phone'] == phone] + ' is your number?'
+            set_repeat_qwe(phone=phone, key=True)
+        twiml_xml = collect_2gathers_response(text=text, hints='', phone=phone, add_step=False)
+
     return str(twiml_xml)
-
-
-# @app.route('/question3_1', methods=['GET', 'POST'])  # работа с вебом
-# def question3_1():
-#     """
-#     обрабатывается вопрос:  могу я уточнить ваш регестрационный номер
-#     задаётся вопрос:
-#         Нашел --> правильно ли я понял ваш номер?
-#         неНашел --> могли бы вы повторить ответ
-#         Нет --> конец разговора.
-#     """
-#
-#     global out
-#
-#     url = request.form.get('RecordingUrl')
-#     data = io.BytesIO(urlopen(url).read())
-#
-#     r = sr.Recognizer()
-#     with sr.AudioFile(data) as source:
-#         audio_ = r.record(source)
-#
-#     client_speech = r.recognize_google(audio_)
-#     phone = request.form.get('To')
-#     write_user_answer(text='dictate: ' + client_speech, phone=phone)
-#
-#     _, neg = get_pos_neg(client_speech=client_speech, phone=phone)
-#     found = find_plate(client_speech=client_speech, phone=phone)
-#
-#     if found:
-#         out[out.phone == phone]["again_key"] = True
-#
-#         twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints=phrases.pst_hint,
-#                                               text='Can I validate, your vehicle registration number is ' +
-#                                                    str(out['reg_num'][out.phone == phone].values[0]) + '?')
-#
-#     elif neg:
-#         set_convrs_key(phone=phone, key=2)
-#         twiml_xml = collect_end_conversation(phrases.sorry_4_bothr)
-#
-#     else:
-#         twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.reg_num, phone=phone,
-#                                               add_step=False, sufix='_1', timeout='5')
-#
-#     return str(twiml_xml)
 
 
 @app.route('/question4', methods=['GET', 'POST'])  # работа с вебом
@@ -445,15 +439,14 @@ def question4():
         Нет --> могу я уточнить ваш пробег
     """
 
-
     phone, client_speech = get_stage_values(form=request.form, lack_ngt_text=False)
     pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
 
     # при одобрении задаётся следующий вопрос
     if pos:
-        out['phone_for_offer'][out.phone == phone] = phone
+        out['mileage'][out.phone == phone] = phone
         twiml_xml = collect_2gathers_response(text='Can I just confirm you live in ' +
-                                              str(out['city'][out.phone == phone].values[0]) + '?',
+                                                   str(out['city'][out.phone == phone].values[0]) + '?',
                                               phone=phone, hints=phrases.serv_hist)
 
     # при отрицании прошу ввести номер телефона
@@ -461,12 +454,16 @@ def question4():
         twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ml, phone=phone)
     # если не нашел никакой реакции переспроси
     else:
-        twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.pst_hint, phone=phone,
-                                              add_step=False)
+        if out['repeat_qwe'][out['phone'] == phone].values[0]:
+            text = phrases.cld_u_rpt
+            set_repeat_qwe(phone=phone, key=False)
+
+        else:
+            text = 'could you repeat ' + out['mileage'][out['phone'] == phone] + ' is your mileage?'
+            set_repeat_qwe(phone=phone, key=True)
+        twiml_xml = collect_2gathers_response(text=text, hints='', phone=phone, add_step=False)
 
     return str(twiml_xml)
-
-
 
 
 @app.route('/question4_1', methods=['GET', 'POST'])  # работа с вебом
@@ -487,54 +484,10 @@ def question4_1():
 
     out['mileage'][out.phone == phone] = client_inp
     twiml_xml = collect_2gathers_response(text='Can I just confirm you live in ' +
-                                          str(out['city'][out.phone == phone].values[0]) + '?',
+                                               str(out['city'][out.phone == phone].values[0]) + '?',
                                           phone=phone, hints=phrases.serv_hist)
 
     return str(twiml_xml)
-
-
-# @app.route('/question4_1_1', methods=['GET', 'POST'])  # работа с вебом
-# def question4_1_1():
-#     """
-#     обрабатывается вопрос:  могу я уточнить ваш пробег
-#     задаётся вопрос:
-#         Нашел --> правильно ли я понял ваш пробег?
-#         неНашел --> могли бы вы повторить ответ
-#         Нет --> конец разговора.
-#     """
-#
-#     global out
-#
-#     url = request.form.get('RecordingUrl')
-#     data = io.BytesIO(urlopen(url).read())
-#
-#     r = sr.Recognizer()
-#     with sr.AudioFile(data) as source:
-#         audio_ = r.record(source)
-#
-#     client_speech = r.recognize_google(audio_)
-#     phone = request.form.get('To')
-#     write_user_answer(text='dictate: ' + client_speech, phone=phone)
-#
-#     _, neg = get_pos_neg(client_speech=client_speech, phone=phone)
-#     found = find_mileage(client_speech=client_speech, phone=phone)
-#
-#     if found:
-#         out[out.phone == phone]["again_key"] = True
-#
-#         twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints=phrases.pst_hint,
-#                                               text='Can I validate, your mileage is ' +
-#                                                    str(out['mileage'][out.phone == phone].values[0]) + '?')
-#
-#     elif neg:
-#         set_convrs_key(phone=phone, key=2)
-#         twiml_xml = collect_end_conversation(phrases.sorry_4_bothr)
-#
-#     else:
-#         twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.mileage, phone=phone,
-#                                               add_step=False, sufix='_1')
-#
-#     return str(twiml_xml)
 
 
 @app.route('/question5', methods=['GET', 'POST'])  # работа с вебом
@@ -547,10 +500,27 @@ def question5():
     """
 
     phone, client_speech, ngt_txt = get_stage_values(request.form)
+    pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
 
-    return choose_rigth_answer(positive_text=phrases.fivth_stage, positive_hint=phrases.pst_hint,
-                               client_speech=client_speech, negative_text=ngt_txt, phone=phone,
-                               negative_hint=phrases.city, repeat_hint=phrases.pst_hint + ', ' + phrases.city)
+    if pos:
+        twiml_xml = collect_2gathers_response(text=phrases.fivth_stage, hints='', phone=phone)
+
+    elif neg:
+        twiml_xml = collect_2gathers_response(text=ngt_txt, hints='', sufix='_1', add_step=False,
+                                              phone=phone, timeout='3')
+
+    else:
+        if out['repeat_qwe'][out['phone'] == phone].values[0]:
+            text = phrases.cld_u_rpt
+            set_repeat_qwe(phone=phone, key=False)
+
+        else:
+            text = 'could you repeat, do you live in ' + str(out['city'][out.phone == phone].values[0]) + '?'
+            set_repeat_qwe(phone=phone, key=True)
+
+        twiml_xml = collect_2gathers_response(text=text, hints='', phone=phone, add_step=False)
+
+    return str(twiml_xml)
 
 
 @app.route('/question5_1', methods=['GET', 'POST'])
@@ -580,7 +550,6 @@ def question5_1():
     phone = request.form.get('To')
     write_user_answer(text='dictate: ' + client_speech, phone=phone)
 
-    _, neg = get_pos_neg(client_speech=client_speech, phone=phone)
     found = find_city(client_speech=client_speech, phone=phone)
 
     if found:
@@ -590,13 +559,16 @@ def question5_1():
                                               text='Can I validate, you live in ' + str(
                                                   out['city'][out.phone == phone].values[0]) + '?')
 
-    elif neg:
-        set_convrs_key(phone=phone, key=2)
-        twiml_xml = collect_end_conversation(phrases.sorry_4_bothr)
-
     else:
-        twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.city, phone=phone, add_step=False,
-                                              sufix='_1')
+        if out['repeat_qwe'][out['phone'] == phone].values[0]:
+            text = phrases.cld_u_rpt
+            set_repeat_qwe(phone=phone, key=False)
+
+        else:
+            text = 'could you repeat ' + ents.repeat_subj[out['stage'][out['phone'] == phone].values[0] - 1]
+            set_repeat_qwe(phone=phone, key=True)
+
+        twiml_xml = collect_2gathers_response(text=text, hints='', phone=phone, add_step=False, sufix='_1')
 
     return str(twiml_xml)
 
@@ -623,8 +595,14 @@ def question6():
         twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ph, phone=phone)
     # если не нашел никакой реакции переспроси
     else:
-        twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.pst_hint, phone=phone,
-                                              add_step=False)
+        if out['repeat_qwe'][out['phone'] == phone].values[0]:
+            text = phrases.cld_u_rpt
+            set_repeat_qwe(phone=phone, key=False)
+
+        else:
+            text = 'could you repeat ' + ents.repeat_subj[out['stage'][out['phone'] == phone].values[0] - 1]
+            set_repeat_qwe(phone=phone, key=True)
+        twiml_xml = collect_2gathers_response(text=text, hints='', phone=phone, add_step=False)
 
     return str(twiml_xml)
 
@@ -644,7 +622,7 @@ def question6_1():
     phone = request.form.get('To')
     write_user_answer(text='dictate: ' + client_inp, phone=phone)
 
-    if len(client_inp) == 10:
+    if len(client_inp) == config.digits_per_phone:
         out['phone_for_offer'][out.phone == phone] = "+" + client_inp
         twiml_xml = collect_2gathers_response(text=phrases.sixth_stage, phone=phone, hints=phrases.serv_hist)
 
@@ -654,7 +632,7 @@ def question6_1():
     return str(twiml_xml)
 
 
-@app.route('/question7', methods=['GET', 'POST'])
+@app.route('/question7')
 def question7():
     """
     обрабатывается вопрос: какая у вас сервисная история?
@@ -667,7 +645,6 @@ def question7():
     phone = request.form.get('To')
     if out['cnvrs_key'][out.phone == phone].values[0] == 1 and out['first_ques'][out.phone == phone].values[0]:
         found = True
-        out['first_ques'][out.phone == phone] = False
     else:
         url = request.form.get('RecordingUrl')
         data = io.BytesIO(urlopen(url).read())
@@ -693,8 +670,14 @@ def question7():
 
     # иначе вопрос задаётся повторно
     else:
-        twiml_xml = collect_2gathers_response(text=phrases.cld_u_rpt, hints=phrases.serv_hist, phone=phone,
-                                              add_step=False)
+        if out['repeat_qwe'][out['phone'] == phone].values[0]:
+            text = phrases.cld_u_rpt
+            set_repeat_qwe(phone=phone, key=False)
+
+        else:
+            text = 'could you repeat ' + ents.repeat_subj[out['stage'][out['phone'] == phone].values[0] - 1]
+            set_repeat_qwe(phone=phone, key=True)
+        twiml_xml = collect_2gathers_response(text=text, hints='', phone=phone, add_step=False)
 
     return str(twiml_xml)
 
@@ -788,7 +771,8 @@ def test_call():
     """
     twiml = collect_2gathers_response(text=phrases.greeting,
                                       hints=phrases.pst_hint, phone=config.phone_for_test, add_step=False)
-    client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=config.phone_for_test, from_=config.twilio_number,
+    client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=config.phone_for_test,
+                        from_=config.twilio_number,
                         record=True)
 
 
@@ -885,7 +869,7 @@ def add_person():
         json = request.get_json()
         dt = pd.DataFrame.from_dict(json)
         out = pd.concat([out, dt], ignore_index=True)
-        # print('kkk', out)
+
     return " "
 
 
@@ -912,16 +896,19 @@ def extract_num():
             if i < 3:
                 req = add_field_to_dict(0, i, req)
 
-            elif i < 7:
+            elif i < 8:
                 req = add_field_to_dict(False, i, req)
 
-            elif i == 7:
+            elif i == 8:
                 req = add_field_to_dict(1, i, req)
 
             else:
                 req = add_field_to_dict(None, i, req)
 
         requests.post(config.add_pers_url, json=req)
+        writer = pd.ExcelWriter('tmp.xlsx')
+        df.to_excel(writer, 'Sheet1')
+        writer.save()
         return "SUCCESS"
     except:
         photo_url = request.get_json()['img_url']
@@ -935,9 +922,9 @@ def extract_num():
         for i in range(len(config.adding_filds)):
             if i < 3:
                 req[config.adding_filds[i]] = 0
-            elif i < 7:
+            elif i < 8:
                 req[config.adding_filds[i]] = False
-            elif i == 7:
+            elif i == 8:
                 req[config.adding_filds[i]] = 1
             else:
                 req[config.adding_filds[i]] = None
@@ -967,10 +954,11 @@ def index():
                 <input type="submit" name="submit">
                 </form>"""
 
+
 @app.route('/ir')
 def ir():
     print(out)
 
 
 if __name__ == '__main__':
-    app.run(host=config.host, port=config.port)
+    app.run(host=config.host, port=config.port, threaded=True)

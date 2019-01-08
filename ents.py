@@ -1,6 +1,9 @@
+import phrases
+
 ents = {
     'pst': ["yes", "yeah", "exactly", "you are right", "just so", "ok", "yeh", "yep", "correct", "affirmative",
-            "perfect", "still available", "yes, it is", "ok that's great", "perfect, thanks", "thank you for contact me",
+            "perfect", "still available", "yes, it is", "ok that's great", "perfect, thanks",
+            "thank you for contact me",
             "whats the offer", "thanks for the offer", "cool", "yes please", "why not", "if its free", "accept",
             "precisely", "you may well say so", "available"],
 
@@ -15,7 +18,10 @@ ents = {
 subjects = ['my greeting', 'registration number of your car', ' mileage of your car', 'the nearest city to you',
             'phone number to offer', 'your car service history', 'making you offer']
 
-serv_hist = ['1', '2', '3', 'full', 'part', 'no', 'missing', 'lost', 'miss']
+repeat_subj = ['your car available?', 'are you interested?', '', '', 'the nearest city to you.',
+               phrases.fivth_stage, phrases.sixth_stage]
+
+serv_hist = ['1', '2', '3', 'full', 'part', 'parts', 'missing', 'lost', 'miss', 'no']
 
 serv_hist_kind = {'1': 'Full service history', 'full': 'Full service history',
                   '2': 'Part service history', 'part': 'Part service history', 'parts': 'Part service history',
@@ -28,7 +34,7 @@ cities = ['London', 'Birmingham', 'Leeds', 'Glasgow', 'Sheffield', 'Bradford', '
           'East Riding', 'South Lanarkshire', 'Coventry', 'Belfast', 'Leicester', 'Sunderland', 'Sandwell', 'Doncaster',
           'Stockport', 'Sefton', 'Nottingham', 'Newcastle upon Tyne', 'Kingston upon Hull', 'Bolton', 'Walsall', 'Arun',
           'Plymouth', 'Rotherham', 'Stoke on Trent', 'Wolverhampton', 'Rhondda', 'Cynon', 'Taff', 'Oldham', 'Derby',
-          'South Gloucestershire',  'Swansea', 'Salford', 'Aberdeenshire', 'Barnsley', 'Tameside', 'Trafford', 'York',
+          'South Gloucestershire', 'Swansea', 'Salford', 'Aberdeenshire', 'Barnsley', 'Tameside', 'Trafford', 'York',
           'Aberdeen', 'Southampton', 'Highland', 'Rochdale', 'Solihull', 'Gateshead', 'Milton Keynes', 'North Tyneside',
           'Calderdale', 'Northampton', 'Portsmouth', 'Warrington', 'North Somerset', 'Bury', 'Luton', 'St Helens',
           'Stockton on Tees', 'Renfrewshire', 'Thamesdown', 'Southend on Sea', 'New Forest', 'Caerphilly', 'Wycombe',
@@ -36,11 +42,12 @@ cities = ['London', 'Birmingham', 'Leeds', 'Glasgow', 'Sheffield', 'Bradford', '
           'North East Lincolnshire', 'Chelmsford', 'Brighton', 'South Tyneside', 'Charnwood', 'Aylesbury Vale', 'Swale',
           'Knowsley', 'North Lincolnshire', 'Huntingdonshire', 'Macclesfield', 'Blackpool', 'West Lothian', 'Newbury',
           'South Somerset', 'Dundee', 'Basingstoke and Deane', 'Harrogate', 'Dumfries and Galloway', 'Middlesbrough',
-          'Flintshire', 'Rochester upon Medway', 'The Wrekin',  'Falkirk', 'Reading', 'Wokingham', 'North Ayrshire',        ### Bedfordshire Wiltshire Hertfordshire Ayrshire
+          'Flintshire', 'Rochester upon Medway', 'The Wrekin', 'Falkirk', 'Reading', 'Wokingham', 'North Ayrshire',
           'Windsor and Maidenhead', 'Maidstone', 'Redcar and Cleveland', 'Blackburn', 'Neath Port Talbot', 'Poole',
-          'Wealden', 'Bedford',  'Lancaster', 'Newport', 'Canterbury', 'Preston', 'Dacorum', 'Cherwell', 'Mid Sussex',
-          'Perth and Kinross', 'Thurrock', 'Tendring', 'Kings Lynn and West Norfolk', 'St Albans', 'Bridgend', 'Elmbridge',
-          'South Cambridgeshire', 'Braintree', 'Norwich', 'Thanet', 'Isle of Wight',  'South Oxfordshire', 'Guildford',
+          'Wealden', 'Bedford', 'Lancaster', 'Newport', 'Canterbury', 'Preston', 'Dacorum', 'Cherwell', 'Mid Sussex',
+          'Perth and Kinross', 'Thurrock', 'Tendring', 'Kings Lynn and West Norfolk', 'St Albans', 'Bridgend',
+          'Elmbridge',
+          'South Cambridgeshire', 'Braintree', 'Norwich', 'Thanet', 'Isle of Wight', 'South Oxfordshire', 'Guildford',
           'Stafford', 'Powys', 'East Hertfordshire', 'Torbay', 'Wrexham Maelor', 'East Devon', 'East Lindsey', 'Halton',
           'Warwick', 'East Ayrshire', 'Newcastle under Lyme', 'North Wiltshire', 'South Kesteven', 'Epping Forest',
           'Vale of Glamorgan', 'Reigate and Banstead', 'Chester', 'Mid Bedfordshire', 'Suffolk Coastal', 'Horsham',
@@ -49,13 +56,19 @@ cities = ['London', 'Birmingham', 'Leeds', 'Glasgow', 'Sheffield', 'Bradford', '
           'Breckland', 'Ipswich', 'Pembrokeshire', 'Vale of White Horse', 'Salisbury', 'Gedling', 'Eastleigh', 'Conway',
           'Broxtowe', 'Stratford on Avon', 'South Bedfordshire', 'Angus', 'East Hampshire', 'East Dunbartonshire',
           'Sevenoaks', 'Slough', 'Bracknell Forest', 'West Lancashire', 'West Wiltshire', 'Ashfield', 'Lisburn',
-          'Scarborough', 'Stroud', 'Wychavon', 'Waveney', 'Exeter', 'Dover', 'Test Valley', 'Gloucester', 'Erewash',        ####
-          'Cheltenham', 'Bassetlaw', 'Scottish Borders', 'Lancashire', 'Bracknell', 'Hampshire', 'Dunbartonshire',
-          'Stratford', 'White Horse', 'Crewe', 'Nantwich', 'Amber', 'Havant', 'Nuneaton', 'Bedworth', 'Suffolk',
-          'Reigate', 'Glamorgan', 'Kesteven', 'Newcastle', 'Wrexham', 'Maelor', 'Devon', 'Lindsey', 'Oxfordshire',
-          'Wight', 'Cambridgeshire', 'Albans', 'Lynn and Norfolk', 'Perth', 'Kinross', 'Sussex', 'Windsor', 'Maidenhead',
-          'Redcar', 'Cleveland', 'Neath Port', 'Talbot', 'Wrekin', 'Rochester', 'Medway']
+          'Scarborough', 'Stroud', 'Wychavon', 'Waveney', 'Exeter', 'Dover', 'Test Valley', 'Gloucester', 'Erewash',
+          'Cheltenham', 'Bassetlaw', 'Scottish Borders']
 
-for i in cities:
-    if 'Medway' in i:
-        print(i)
+### Bedfordshire Wiltshire Hertfordshire Ayrshire Somerset Lincolnshire Tyneside Lanarkshir
+
+part_of_cities = ['Lancashire', 'Bracknell', 'Hampshire', 'Dunbartonshire', 'Kingston', 'Hull', 'Riding',
+                  'Stratford', 'White Horse', 'Crewe', 'Nantwich', 'Amber', 'Havant', 'Nuneaton', 'Bedworth', 'Suffolk',
+                  'Reigate', 'Glamorgan', 'Kesteven', 'Newcastle', 'Wrexham', 'Maelor', 'Devon', 'Lindsey', 'Galloway',
+                  'Wight', 'Cambridgeshire', 'Albans', 'Lynn and Norfolk', 'Perth', 'Kinross', 'Sussex', 'Windsor',
+                  'Redcar', 'Cleveland', 'Neath Port', 'Talbot', 'Wrekin', 'Rochester', 'Medway', 'Dumfries',
+                  'Basingstoke', 'Deane', 'Lothian', 'Aylesbury', 'Southend', 'Stockton', 'Helens', 'Milton', 'Keynes',
+                  'Gloucestershire', 'Stoke', 'Maidenhead', 'Oxfordshire', 'Trent']
+
+# for i in cities:
+#     if 'Trent' in i:
+#         print(i)

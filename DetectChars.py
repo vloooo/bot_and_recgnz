@@ -177,7 +177,8 @@ def remove_overlapping_chars(matched_chrs):
 
 def recognize_chars(img_thresh, matched_chrs):
     str_chars = ""
-
+    # cv2.imshow('hoh', img_thresh)
+    # cv2.waitKey(0)
     height, width = img_thresh.shape
     img_thresh_color = np.zeros((height, width, 3), np.uint8)
     _, img_thresh = cv2.threshold(img_thresh, 0.0, 255.0, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
@@ -238,7 +239,6 @@ def recognize_chars(img_thresh, matched_chrs):
             str_current_char = chr(classes[0] + 55)  # get character from results
 
         str_chars = str_chars + str_current_char
-
     return str_chars
 
 
@@ -371,10 +371,12 @@ def find_psbl_chr(img_thresh, psbl_char_params, explore_area=False):
     return list_of_possible_chars, number_of_chars, none_char
 
 
+# if DetectChars.check_if_possible_char(possible_char, [120, 8, 10, 0.25, 1.5]):
+
 def check_if_possible_char(possible_char, psbl_char_params):
     if (possible_char.area > psbl_char_params[0] and possible_char.width > psbl_char_params[1]
             and possible_char.height > psbl_char_params[2] and
-            psbl_char_params[3] < possible_char.aspect_ratio < psbl_char_params[4]):
+            psbl_char_params[3] < possible_char.aspect_ratio and possible_char.aspect_ratio < psbl_char_params[4]):
         return True
     else:
         return False

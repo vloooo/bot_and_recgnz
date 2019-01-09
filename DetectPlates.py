@@ -6,7 +6,7 @@ import PossiblePlate
 import PossibleChar
 
 cascade = cv2.CascadeClassifier('haarcascade_russian_plate_number.xml')
-
+import  numpy as np
 
 ###################################################################################################
 def detect_plates_in_scene(img_originl):
@@ -15,6 +15,20 @@ def detect_plates_in_scene(img_originl):
     img_gray, img_thresh_scene = Preprocess.preprocess_for_scene(img_originl)
 
     psb_chars = find_vld_chrs_by_cascad(img_thresh_scene, img_gray)
+
+
+    height, width, numChannels = img_originl.shape
+
+    imgContours = np.zeros((height, width, 3), np.uint8)
+
+    contours = []
+
+    for possibleChar in psb_chars:
+        contours.append(possibleChar.contour)
+
+    cv2.drawContours(imgContours, contours, -1, 255)
+    cv2.imshow('PosP', imgContours)
+    cv2.waitKey(0)
 
     all_matched_chars = DetectChars.find_all_cmbn_mtchng_chars(psb_chars, img_gray, [6., 12., .5, 1, .3])
 
@@ -32,7 +46,6 @@ def find_vld_chrs_by_cascad(img_thresh, gray):
 
     gray = cv2.GaussianBlur(gray, (5, 5), 0)
     plates = cascade.detectMultiScale(gray, scaleFactor=1.01, minNeighbors=3)
-
     _, contours, _ = cv2.findContours(img_thresh, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
 
     for i in range(len(contours)):
@@ -43,7 +56,7 @@ def find_vld_chrs_by_cascad(img_thresh, gray):
             for (x, y, w, h) in plates:
                 if x < possible_char.pos_x < x + w and y < possible_char.center_y < y + h:
                     possible_chars.append(possible_char)  # and add to list of possible chars
-
+                    break
     return possible_chars
 
 

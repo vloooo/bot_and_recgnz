@@ -9,15 +9,17 @@ import Preprocess
 
 def main(image_url):
 
-    # loading image
-    resp = urllib.request.urlopen(image_url)
-    image_url = np.asarray(bytearray(resp.read()), dtype="uint8")
-    imgOriginalScene = cv2.imdecode(image_url, cv2.IMREAD_COLOR)
-    # imgOriginalScene = cv2.imread(image_url)
+    # # loading image
+    # resp = urllib.request.urlopen(image_url)
+    # image_url = np.asarray(bytearray(resp.read()), dtype="uint8")
+    # imgOriginalScene = cv2.imdecode(image_url, cv2.IMREAD_COLOR)
+    imgOriginalScene = cv2.imread(image_url)
 
     # croping useful area and resizing
     h, w = imgOriginalScene.shape[:2]
-    imgOriginalScene = imgOriginalScene[int(h / 100 *40): h - 40, 40: w - 40]
+    crop_img = imgOriginalScene[int(h / 100 *40): h - 20, 40: w - 40]
+
+    imgOriginalScene = imgOriginalScene[int(h / 100 *40): h - 20, 40: w - 40]
     imgOriginalScene = cv2.resize(imgOriginalScene, (0, 0), fx=1.4, fy=1.4, interpolation=cv2.INTER_CUBIC)
 
     if imgOriginalScene is None:
@@ -53,9 +55,11 @@ def validate_for_britain(line):
     """
     change network output to british plate's templates
     """
-
     ln = len(line)
-    for j in range(len(line)):
+    for j in range(ln):
+
+        if line[j] == 'Q':
+            line = line[:j] + "O" + line[j + 1:]
 
         if line[j] == '0' and (j < 1 or j > ln - 4):
             line = line[:j] + "O" + line[j + 1:]
@@ -70,6 +74,8 @@ def validate_for_britain(line):
         elif (line[j] == 'T' or line[j] == 'Y' or line[j] == 'I' or line[j] == 'V') and (
                 (ln == 7 and j > 1 and j < 4) or (ln == 6 and j > 0 and j < 3)):
             line = line[:j] + "1" + line[j + 1:]
+        elif line[j] == 'I' and j > 0 and j < ln - 4:
+            line = line[:j] + "1" + line[j + 1:]
         elif line[j] == '1' and (j < 1 or j > ln - 4):
             line = line[:j] + "T" + line[j + 1:]
         elif line[j] == 'I' and (j < 1 or j > ln - 4):
@@ -80,7 +86,7 @@ def validate_for_britain(line):
         elif line[j] == '2' and (j < 1 or j > ln - 4):
             line = line[:j] + "Z" + line[j + 1:]
 
-        elif line[j] == 'B' and ((ln == 7 and j > 1 and j < 4) or (ln == 6 and j > 0 and j < 3)):
+        elif line[j] == 'B' and ((ln == 7 and j > 1 and j < 4) or (ln == 6 and 0 < j < 3)):
             line = line[:j] + "8" + line[j + 1:]
         elif line[j] == '8' and (j < 1 or j > ln - 4):
             line = line[:j] + "B" + line[j + 1:]
@@ -90,6 +96,7 @@ def validate_for_britain(line):
 
         elif line[j] == '4' and (j < 1 or j > ln - 4):
             line = line[:j] + "A" + line[j + 1:]
+
     return line
 
 
@@ -152,20 +159,20 @@ def explore_btms(list_of_psb_chars, dif_list):
     return dif_list
 
 
-# if __name__ == "__main__":
-#
-#
-#     dirnrm = '/home/user/PycharmProjects/plates/cars/forTest'
-#     dirnrmN = '/home/user/PycharmProjects/plates/cars/new/neW'
-#     names = os.listdir(dirnrmN)
-#     counter = 0
-#     # names = ['DG51TCY).jpg']
-#     for i in names:
-#         c = main(dirnrmN + '/' + i)
-#         print(i[:-4],'         ', c)
-#
-#         if i.find(c) != -1:
-#             print('!!!!!!!!!!!!')
-#             counter += 1
-#
-#     print(counter, '/', len(names))
+if __name__ == "__main__":
+
+
+    dirnrm = '/home/user/PycharmProjects/plates/cars/new/norm'
+    dirnrmN = '/home/user/PycharmProjects/plates/cars/new/neW'
+    names = os.listdir(dirnrm)
+    counter = 0
+    # names = ['KJ03SXN).jpg']
+    for i in names:
+        c = main(dirnrm + '/' + i)
+        print(i[:-4],'         ', c)
+
+        if i.find(c) != -1:
+            print('!!!!!!!!!!!!')
+            counter += 1
+
+    print(counter, '/', len(names))

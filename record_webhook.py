@@ -94,8 +94,8 @@ def find_plate(phone):
     try:
         resp = urlopen(str(out['img_url'][out['phone'] == phone].values[0]))
         image = np.asarray(bytearray(resp.read()), dtype="uint8")
-        imgOriginalScene = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        cv2.imwrite('tst.png', imgOriginalScene)
+        img = cv2.imdecode(image, cv2.IMREAD_COLOR)
+        cv2.imwrite('tst.png', img)
 
         with open('tst.png', 'rb') as fp:
             response = requests.post(
@@ -358,6 +358,20 @@ def set_repeat_qwe(phone, key):
     out['repeat_qwe'][out['phone'] == phone] = key
 
 
+@app.route('/set_urls/<urlo>')  # работа с вебом
+def set_urls(urlo):
+    global start_url, ngrok_url
+
+    config.main_url = 'https://' + urlo + '/'
+    config.recive_url = config.main_url + 'receiver'
+
+    config.ngrok_url = config.main_url + 'question'
+    config.start_url = config.ngrok_url + '1'
+
+    start_url = config.start_url
+    ngrok_url = config.ngrok_url
+
+
 #                                                   question part
 ######################################################################################################################
 @app.route('/question1', methods=['GET', 'POST'])  # работа с вебом
@@ -370,9 +384,9 @@ def question1():
     set_convrs_key(phone, 1)
 
     # twilio выбор ответа
-    return choose_rigth_answer(end_call=True, positive_text=phrases.first_stage, positive_hint=phrases.pst_hint,
+    return choose_rigth_answer(end_call=True, positive_text=phrases.first_stage, positive_hint='',
                                phone=phone, client_speech=client_speech, negative_text=phrases.sorry_4_bothr,
-                               repeat_hint=phrases.pst_hint)
+                               repeat_hint='')
 
 
 @app.route('/question2', methods=['GET', 'POST'])  # работа с вебом
@@ -390,7 +404,7 @@ def question2():
     return choose_rigth_answer(client_speech=client_speech, negative_text=phrases.sorry_4_bothr,
                                positive_text='Can I confirm your vehicle registration number is ' + str(
                                    out[out.phone == phone]['reg_num'].values[0]) + '?',
-                               positive_hint=phrases.pst_hint, phone=phone, end_call=True, repeat_hint=phrases.pst_hint)
+                               positive_hint='', phone=phone, end_call=True, repeat_hint='')
 
 
 @app.route('/question3', methods=['GET', 'POST'])  # работа с вебом
@@ -447,7 +461,7 @@ def question4():
         out['mileage'][out.phone == phone] = phone
         twiml_xml = collect_2gathers_response(text='Can I just confirm you live in ' +
                                                    str(out['city'][out.phone == phone].values[0]) + '?',
-                                              phone=phone, hints=phrases.serv_hist)
+                                              phone=phone, hints='')
 
     # при отрицании прошу ввести номер телефона
     elif neg:
@@ -485,7 +499,7 @@ def question4_1():
     out['mileage'][out.phone == phone] = client_inp
     twiml_xml = collect_2gathers_response(text='Can I just confirm you live in ' +
                                                str(out['city'][out.phone == phone].values[0]) + '?',
-                                          phone=phone, hints=phrases.serv_hist)
+                                          phone=phone, hints='')
 
     return str(twiml_xml)
 
@@ -555,7 +569,7 @@ def question5_1():
     if found:
         out[out.phone == phone]["again_key"] = True
 
-        twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints=phrases.pst_hint,
+        twiml_xml = collect_2gathers_response(add_step=False, phone=phone, hints='',
                                               text='Can I validate, you live in ' + str(
                                                   out['city'][out.phone == phone].values[0]) + '?')
 
@@ -588,7 +602,7 @@ def question6():
     # при одобрении задаётся следующий вопрос
     if pos:
         out['phone_for_offer'][out.phone == phone] = phone
-        twiml_xml = collect_2gathers_response(text=phrases.sixth_stage, phone=phone, hints=phrases.serv_hist)
+        twiml_xml = collect_2gathers_response(text=phrases.sixth_stage, phone=phone, hints='')
 
     # при отрицании прошу ввести номер телефона
     elif neg:
@@ -624,7 +638,7 @@ def question6_1():
 
     if len(client_inp) == config.digits_per_phone:
         out['phone_for_offer'][out.phone == phone] = "+" + client_inp
-        twiml_xml = collect_2gathers_response(text=phrases.sixth_stage, phone=phone, hints=phrases.serv_hist)
+        twiml_xml = collect_2gathers_response(text=phrases.sixth_stage, phone=phone, hints='')
 
     else:
         twiml_xml = collect_keybrd_response(text=phrases.nt_vld_input, phone=phone)
@@ -664,7 +678,7 @@ def question7():
 
     # если найдено одно из допустимых значений сервисной истории --> следующий вопрос
     if found:
-        twiml_xml = collect_2gathers_response(text=phrases.seventh_stage, hints=phrases.pst_hint, phone=phone)
+        twiml_xml = collect_2gathers_response(text=phrases.seventh_stage, hints='', phone=phone)
         set_convrs_key(phone, 3)
         send_inf(phone=phone)
 
@@ -770,10 +784,9 @@ def test_call():
 
     """
     twiml = collect_2gathers_response(text=phrases.greeting,
-                                      hints=phrases.pst_hint, phone=config.phone_for_test, add_step=False)
+                                      hints='', phone=config.phone_for_test, add_step=False)
     client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=config.phone_for_test,
-                        from_=config.twilio_number,
-                        record=True)
+                        from_=config.twilio_number, record=True)
 
 
 @app.route('/call_auto')
@@ -783,7 +796,6 @@ def call_auto():
     """
     while True:
         if config.lower_limit <= datetime.utcnow().hour < config.upper_limit:
-            print('ddd')
             make_calls()
             time.sleep(config.sleep_min * 60)
         else:
@@ -828,7 +840,7 @@ def make_calls():
                         set_first_qwe(phone=phone, key=False)
 
                         twiml_xml = collect_2gathers_response(text=phrases.greeting,
-                                                              hints=phrases.pst_hint, phone=phone, add_step=False)
+                                                              hints='', phone=phone, add_step=False)
                     initiate_call(twiml=twiml_xml, phone=phone)
                 number_of_client = config.number_of_calls_per_time - number_of_client
             else:
@@ -849,7 +861,7 @@ def quiq_recalls():
             elif out['cnvrs_key'][out.phone == phone].values[0] == 0:
                 set_first_qwe(phone=phone, key=False)
                 twiml_xml = collect_2gathers_response(text=phrases.greeting,
-                                                      hints=phrases.pst_hint, phone=phone, add_step=False)
+                                                      hints='', phone=phone, add_step=False)
             initiate_call(twiml=twiml_xml, phone=phone)
             number_of_calls += 1
     quiq_recall_phones.clear()
@@ -879,7 +891,7 @@ def snd():
     requests.post(config.main_url + 'extract_num', json=pers)
 
 
-@app.route('/extract_num')
+@app.route('/extract_num', methods=['POST', 'GET'])
 def extract_num():
     global out
 
@@ -948,7 +960,7 @@ def add_field_to_dict(value, pos_field, req):
 
 @app.route('/i')
 def index():
-    return """<form action="/extract_num" method="post" enctype="multipart/form-data">
+    return '<form action="' + config.main_url + """extract_num" method="post" enctype="multipart/form-data">
                 <input type="file" name="pic">
                 <input type="submit" name="submit">
                 </form>"""
@@ -957,6 +969,7 @@ def index():
 @app.route('/ir')
 def ir():
     print(out)
+    return ''
 
 
 if __name__ == '__main__':

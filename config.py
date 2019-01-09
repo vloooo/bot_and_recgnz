@@ -5,6 +5,9 @@ sleep_min = 1
 timeout = 3
 
 
+phone_for_test = '+380669631139'
+main_url = 'http://0b5969fd.ngrok.io/'
+recive_url = main_url + 'receiver'
 
 
 

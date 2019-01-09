@@ -17,17 +17,23 @@ def preprocess_for_plate(img_orig):
     img_grayscale = copy.deepcopy(img_bl)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(3, 3))
     im = clahe.apply(img_bl)
-
+    # print(im)
     list_of_psb_chr = prepare_to_hist_clcl(im)
     img_thresh, img_grayscale = histogram_kray_fill(im, img_grayscale, list_of_psb_chr)
-
+    # cv2.imshow('hoh', img_thresh)
+    # cv2.waitKey(0)
     img_thresh = half_thresh(img_thresh)
+
     img_thresh = kray_fill(img_thresh)
 
     list_of_possible_chars, number_of_chars, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+
+
     if number_of_chars > 7:
         img_thresh = replace_last_first(img_thresh, list_of_possible_chars, number_of_chars)
-        img_thresh = del_blue(img_orig, list_of_psb_chr, img_thresh)
+        img_thresh = del_blue(img_orig, list_of_possible_chars, img_thresh)
+    # cv2.imshow('lll4', img_thresh)
+    # cv2.waitKey(0)
 
     list_of_psb_chr, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
     img_thresh = draw_top_line(list_of_psb_chr, img_thresh)
@@ -36,21 +42,24 @@ def preprocess_for_plate(img_orig):
     list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
     if nmbr_of_chrs >= 2:
         img_thresh = separate_stick(img_thresh, list_of_psb_chr, none_chars)
-
-    list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [100, 4, 15, 0.15, 1])
+    cv2.imshow('hoffffffffffffffh', img_thresh)
+    cv2.waitKey(0)
+    _, _, none_chars = DetectChars.find_psbl_chr(img_thresh, [100, 4, 15, 0.15, 1])
     img_thresh = matching_broken_chars(img_thresh, none_chars)
+
 
     list_of_psb_chr, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
     height, width = img_thresh.shape
     img_thresh = np.zeros((height, width), np.uint8)
     img_for_rcgnz = np.zeros((height, width), np.uint8)
 
-    img_for_rcgnz_copy = img_grayscale.copy()
+
+
     for i in list_of_psb_chr:
         x1 = np.max([i.pos_x - 2, 0])
         y1 = np.min([i.pos_y + i.height + 1, height - 1])
 
-        roi = img_for_rcgnz_copy[:, x1: i.pos_x + i.width + 2]
+        roi = img_grayscale[:, x1: i.pos_x + i.width + 2]
 
         _, img_for_rcgnz[i.pos_y - 1:y1, x1: i.pos_x + i.width + 2] = \
             cv2.threshold(roi[i.pos_y - 1:y1, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
@@ -58,6 +67,8 @@ def preprocess_for_plate(img_orig):
         _, img_thresh[i.pos_y - 1:y1, x1: i.pos_x + i.width + 2] = \
             cv2.threshold(roi[i.pos_y - 1:y1, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
+    cv2.imshow('hoh', img_thresh)
+    cv2.waitKey(0)
     list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
     if nmbr_of_chrs > 0:
         img_thresh = rotate(img_thresh, list_of_psb_chr)
@@ -78,6 +89,7 @@ def preprocess_for_plate(img_orig):
     kernel = np.ones((3, 3), np.uint8)
     img_for_rcgnz = cv2.erode(img_for_rcgnz, kernel)
 
+
     return img_grayscale, img_thresh, img_for_rcgnz
 
 
@@ -88,7 +100,6 @@ def prepare_to_hist_clcl(im):
     list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
     if nmbr_of_chrs > 2:
         img_thresh = separate_stick(img_thresh, list_of_psb_chr, none_chars)
-
     list_of_psb_chr, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
     return list_of_psb_chr
 
@@ -115,7 +126,7 @@ def kray_fill(img_thresh, full_filling=False, full_left_right=True):
     ln = img_thresh.shape[1]
     counter_up = 0
     counter_bt = img_thresh.shape[0] - 1
-    counter_lf = 1
+    counter_lf = 0
     counter_rg = img_thresh.shape[1] - 1
 
     sm = img_for_count.sum(axis=1)
@@ -126,13 +137,13 @@ def kray_fill(img_thresh, full_filling=False, full_left_right=True):
 
     sm = sm[::-1]
     for i in sm:
-        # p
         counter_bt -= 1
         if i > int(ln / 100 * 70):
             break
 
     ln = img_thresh.shape[0]
     sm = img_for_count.sum(axis=0)
+
     for i in sm:
         counter_lf += 1
         if i > int(ln / 100 * 60):
@@ -143,6 +154,7 @@ def kray_fill(img_thresh, full_filling=False, full_left_right=True):
         counter_rg -= 1
         if i > int(ln / 100 * 60):
             break
+
     if full_filling:
         if counter_rg < img_thresh.shape[1] / 100 * 80:
             counter_rg = 0
@@ -252,7 +264,7 @@ def separate_stick(img_thresh, list_of_psb_chr, none_chars):
     list_for_separate_line = []
 
     for i in none_chars:
-        if len(list_of_psb_chr) > 2 and i.area > list_of_psb_chr[-1].area * 1.5 and \
+        if len(list_of_psb_chr) >= 2 and i.area > list_of_psb_chr[-1].area * 1.5 and \
                 abs(i.center_y - list_of_psb_chr[-2].center_y) < 10 < i.height:
 
             if list_of_psb_chr[-2].width / i.width > 0.33:
@@ -291,6 +303,9 @@ def del_blue(img_orig, list_of_psb_chr, img_thresh):
     _, roi = cv2.threshold(roi, 1, 1, cv2.THRESH_BINARY)
 
     if np.mean(roi) < 0.3:
+        # img_thresh[:, 59] = 255
+
+        # print(frst_char.pos_x + frst_char.width, frst_char.pos_x, frst_char.width)
         img_thresh[:, :frst_char.pos_x + frst_char.width] = 0
 
     return img_thresh
@@ -378,7 +393,7 @@ def histogram_kray_fill(img_thresh, img_grayscale, list_of_psb_chr):
                     break
 
             if indx_max > width - 1:
-                indx_max = width - 2
+                indx_max = width - 1
 
             img_thresh = img_thresh[:, :indx_max]
             img_grayscale = img_grayscale[:, :indx_max]

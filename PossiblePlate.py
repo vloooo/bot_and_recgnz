@@ -1,17 +1,10 @@
-# PossiblePlate.py
-
-import cv2
-import numpy as np
-
-###################################################################################################
 class PossiblePlate:
 
-    # constructor #################################################################################
     def __init__(self):
-        self.imgPlate = None
-        self.imgGrayscale = None
-        self.imgThresh = None
-        self.imgThreshForRcgnz = None
-        self.rrLocationOfPlateInScene = None
+        self.img_plate = None
+        self.img_grayscale = None
+        self.img_thresh = None
+        self.img_thresh_for_rcgnz = None
+        self.location_plate_on_img = None
 
-        self.strChars = ""
+        self.str_chars = ""

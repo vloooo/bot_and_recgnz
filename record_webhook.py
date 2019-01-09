@@ -879,8 +879,10 @@ def snd():
     requests.post(config.main_url + 'extract_num', json=pers)
 
 
-@app.route('/extract_num', methods=['POST', 'GET'])
+@app.route('/extract_num')
 def extract_num():
+    global out
+
     try:
         xls = pd.ExcelFile(request.files['pic'])
         df = xls.parse(xls.sheet_names[0], converters={"phone": str})
@@ -890,7 +892,7 @@ def extract_num():
 
         with graph.as_default():
             for j in range(len(req['phone'])):
-                req['reg_num'][j], _ = Main.main(req['img_url'][j])
+                req['reg_num'][j] = Main.main(req['img_url'][j])
 
         for i in range(len(config.adding_filds)):
             if i < 3:
@@ -910,13 +912,12 @@ def extract_num():
         df.to_excel(writer, 'Sheet1')
         writer.save()
         return "SUCCESS"
+
     except:
         photo_url = request.get_json()['img_url']
 
-        global out
         with graph.as_default():
-            c, _ = Main.main(photo_url)
-            c = Main.validate_for_britain(c)
+            c = Main.main(photo_url)
         req = request.get_json()
 
         for i in range(len(config.adding_filds)):
@@ -929,13 +930,11 @@ def extract_num():
             else:
                 req[config.adding_filds[i]] = None
         req['reg_num'] = c
-        # print(req)
 
         values = [[req[k]] for k in config.flds]
         values = np.array(values).T
         dt = pd.DataFrame(data=values, columns=config.flds)
         out = pd.concat([out, dt], ignore_index=True)
-        # print('uuu', out)
 
         return "SUCCESS"
 

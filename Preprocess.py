@@ -1,943 +1,455 @@
-# Preprocess.py
-
 import cv2
 import numpy as np
 import math
-import Main
-import PossibleChar
 import DetectChars
 import copy
-import matplotlib.pyplot as plt
-# module level variables ##########################################################################
-import PossiblePlate
-
-PLATE_WIDTH_PADDING_FACTOR = 1.3
-PLATE_HEIGHT_PADDING_FACTOR = 1.5
-
-GAUSSIAN_SMOOTH_FILTER_SIZE = (5, 5) #####11
-ADAPTIVE_THRESH_BLOCK_SIZE = 31
-ADAPTIVE_THRESH_WEIGHT = 9
 
 
+def preprocess_for_scene(img_orig):
+    output2 = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
+    img_thresh = cv2.adaptiveThreshold(output2, 255.0, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 31, 9)
+
+    return output2, img_thresh
 
 
-
-
-blackL = np.array([0, 0, 0], dtype="uint8")
-blackU = np.array([40, 40, 40], dtype="uint8")
-
-
-whiteL = np.array([40, 40, 40], dtype="uint8")
-whiteU = np.array([255, 255, 255], dtype="uint8")
-
-
-yellowL = np.array([0, 100, 100], dtype="uint8")
-yllowU = np.array([100, 255, 255], dtype="uint8")
-###################################################################################################
-def preprocess(imgOriginal):
-
-    image = imgOriginal
-
-    output2 = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # output2 = cv2.blur(output2, GAUSSIAN_SMOOTH_FILTER_SIZE)
-
-    imgThresh = cv2.adaptiveThreshold(output2, 255.0, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, ADAPTIVE_THRESH_BLOCK_SIZE, ADAPTIVE_THRESH_WEIGHT)
-
-
-    return output2, imgThresh
-
-
-
-
-
-GAUSSIAN_SMOOTH_FILTER_SIZES = (3, 3) #####11
-ADAPTIVE_THRESH_BLOCK_SIZES = 21
-ADAPTIVE_THRESH_WEIGHTS = 21
-
-def preprocessS(imgOriginal):
-
-
-    imgBl = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2GRAY)
-    imgGrayscale = copy.deepcopy(imgBl)
-
+def preprocess_for_plate(img_orig):
+    img_bl = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
+    img_grayscale = copy.deepcopy(img_bl)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(3, 3))
+    im = clahe.apply(img_bl)
 
-    im = clahe.apply(imgBl)
-    # im = cv2.GaussianBlur(im, (3,3), 0)
+    list_of_psb_chr = prepare_to_hist_clcl(im)
+    img_thresh, img_grayscale = histogram_kray_fill(im, img_grayscale, list_of_psb_chr)
 
+    img_thresh = half_thresh(img_thresh)
+    img_thresh = kray_fill(img_thresh)
 
-    # im= cv2.fastNlMeansDenoising(imgBl, h=1, templateWindowSize=3, searchWindowSize=3)
-    # cv2.imshow('plate', im)
-    # cv2.waitKey(0)
+    list_of_possible_chars, number_of_chars, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    if number_of_chars > 7:
+        img_thresh = replace_last_first(img_thresh, list_of_possible_chars, number_of_chars)
+        img_thresh = del_blue(img_orig, list_of_psb_chr, img_thresh)
 
+    list_of_psb_chr, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    img_thresh = draw_top_line(list_of_psb_chr, img_thresh)
+    img_thresh = draw_btm_line(list_of_psb_chr, img_thresh)
 
-    imgThresh = half_thresh(im)
-    imgThresh = kray_fill_new(imgThresh)
+    list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    if nmbr_of_chrs >= 2:
+        img_thresh = separate_stick(img_thresh, list_of_psb_chr, none_chars)
 
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr(imgThresh)
-    if numberOfChars > 2:
-        imgThresh = separate_stick(imgThresh, listOfPossibleChars, noneChar)
-    listOfPossibleChars, _, _ = find_psbl_chr(imgThresh)
+    list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [100, 4, 15, 0.15, 1])
+    img_thresh = matching_broken_chars(img_thresh, none_chars)
 
+    list_of_psb_chr, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    height, width = img_thresh.shape
+    img_thresh = np.zeros((height, width), np.uint8)
+    img_for_rcgnz = np.zeros((height, width), np.uint8)
 
+    img_for_rcgnz_copy = img_grayscale.copy()
+    for i in list_of_psb_chr:
+        x1 = np.max([i.pos_x - 2, 0])
+        y1 = np.min([i.pos_y + i.height + 1, height - 1])
 
-    # croped = False
-    # if len(listOfPossibleChars) > 7 or len(listOfPossibleChars) == 0:
-    imgThresh, imgGrayscale = new_kray_fill(im, imgGrayscale, listOfPossibleChars)
-    croped = True
-    #     # print('jhfewkhwefohvddcdd')
-    # else:
-    #     imgThresh = im.copy()
-    imgThresh = half_thresh(imgThresh)
-    imgThresh = kray_fill(imgThresh)
+        roi = img_for_rcgnz_copy[:, x1: i.pos_x + i.width + 2]
 
+        _, img_for_rcgnz[i.pos_y - 1:y1, x1: i.pos_x + i.width + 2] = \
+            cv2.threshold(roi[i.pos_y - 1:y1, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    imgForCount = imgThresh.copy()
-    h, imgForCount = cv2.threshold(imgForCount, 1, 1, cv2.THRESH_BINARY_INV)
+        _, img_thresh[i.pos_y - 1:y1, x1: i.pos_x + i.width + 2] = \
+            cv2.threshold(roi[i.pos_y - 1:y1, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    listOfPossibleChars, _, _ = find_psbl_chr(imgThresh)
+    list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    if nmbr_of_chrs > 0:
+        img_thresh = rotate(img_thresh, list_of_psb_chr)
+        img_for_rcgnz = rotate(img_for_rcgnz, list_of_psb_chr)
 
-    # while True:
-    if len(listOfPossibleChars) > 7:
-        imgThresh = replace_last_first(imgThresh, listOfPossibleChars, len(listOfPossibleChars))
+    _, img_thresh = cv2.threshold(img_thresh, 200, 255, cv2.THRESH_BINARY)
+    list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    img_thresh = draw_top_line(list_of_psb_chr, img_thresh)
+    img_thresh = draw_btm_line(list_of_psb_chr, img_thresh)
 
-        imgThresh = del_blue(imgOriginal, listOfPossibleChars, imgThresh)
+    list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [100, 4, 15, 0.15, 1])
+    if nmbr_of_chrs >= 2:
+        img_thresh = separate_stick(img_thresh, list_of_psb_chr, none_chars)
 
-
-    listOfPossibleChars, _, _ = find_psbl_chr(imgThresh)
-
-
-    imgThresh = draw_top_line(listOfPossibleChars, imgThresh)
-    imgThresh = draw_btm_line(listOfPossibleChars, imgThresh)
-
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr(imgThresh)
-
-    if numberOfChars >= 2:
-        imgThresh = separate_stick(imgThresh, listOfPossibleChars, noneChar)
-
-
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr_4broken(imgThresh)
-
-    imgThresh = matching_broken_chars(imgThresh, noneChar, imgForCount)
-
-
-
-
-
-
-
-    listOfPossibleChars, _, _ = find_psbl_chr(imgThresh)
-
-
-
-    height, width = imgThresh.shape
-    imgContoursd = np.zeros((height, width, 3), np.uint8)
-    lst = []
-    for i in listOfPossibleChars:
-        lst.append(i.contour)
-    # cv2.drawContours(imgContoursd, lst, -1, Main.SCALAR_WHITE)
-    # cv2.imshow('konturh', imgContoursd)
-    # # cv2.imshow('kontur2h', imgContours)
-    #
-    # cv2.waitKey(0)
-
-
-
-    listOfPossibleChars, _, _ = find_psbl_chr(imgThresh)
-    height, width = imgThresh.shape
-    imgContours = np.zeros((height, width), np.uint8)
-    imgForRcgnz = np.zeros((height, width), np.uint8)
-
-    imgForRcgnzCopy = imgGrayscale.copy()
-    for i in listOfPossibleChars:
-        x1 = np.max([i.intBoundingRectX - 2, 0])
-        y1 = np.min([i.intBoundingRectY + i.intBoundingRectHeight + 1, height-1])
-        roi = imgForRcgnzCopy[:, x1: i.intBoundingRectX + i.intBoundingRectWidth + 2]
-
-        h, imgForRcgnz[i.intBoundingRectY - 1:y1, x1: i.intBoundingRectX + i.intBoundingRectWidth + 2] = \
-            cv2.threshold(roi[i.intBoundingRectY - 1:y1, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-        h, imgContours[i.intBoundingRectY - 1:y1,
-           x1: i.intBoundingRectX + i.intBoundingRectWidth + 2] = \
-            cv2.threshold(roi[i.intBoundingRectY - 1:y1, :], 2, 255,
-                          cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-
-
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr(imgContours)
-    if numberOfChars > 0 and croped:
-        imgContours = rotate(imgContours, listOfPossibleChars)
-        imgForRcgnz = rotate(imgForRcgnz, listOfPossibleChars)
-
-    _, imgContours = cv2.threshold(imgContours, 200, 255, cv2.THRESH_BINARY)
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr(imgContours)
-    #
-    imgContours = draw_top_line(listOfPossibleChars, imgContours)
-    imgContours = draw_btm_line(listOfPossibleChars, imgContours)
-
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr_4broken(imgContours)
-
-
-
-    if numberOfChars >= 2:
-        imgContours = separate_stick(imgContours, listOfPossibleChars, noneChar)
-
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr_4broken(imgContours)
-    imgContours = matching_broken_chars(imgContours, noneChar, imgForCount)
+    list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [100, 4, 15, 0.15, 1])
+    img_thresh = matching_broken_chars(img_thresh, none_chars)
 
     kernel = np.ones((3, 3), np.uint8)
-    imgForRcgnz = cv2.erode(imgForRcgnz, kernel)
-    # imgContours =
-    # cv2.imshow('Erod', imgContours)
-    # cv2.waitKey(0)
-    return imgGrayscale, imgContours, imgForRcgnz
+    img_for_rcgnz = cv2.erode(img_for_rcgnz, kernel)
+
+    return img_grayscale, img_thresh, img_for_rcgnz
 
 
-def half_thresh(imgGrayscale):
+def prepare_to_hist_clcl(im):
+    img_thresh = half_thresh(im)
+    img_thresh = kray_fill(img_thresh, full_left_right=False)
 
-    imgBlurred = cv2.GaussianBlur(imgGrayscale, GAUSSIAN_SMOOTH_FILTER_SIZES, 100)  # 2nd parameter is (height,width) of Gaussian kernel,3rd parameter is sigmaX,4th parameter is sigmaY(as not specified it is made same as sigmaX).
+    list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    if nmbr_of_chrs > 2:
+        img_thresh = separate_stick(img_thresh, list_of_psb_chr, none_chars)
 
-
-    half_ln = imgBlurred.shape[0]/2 * imgBlurred.shape[1]
-    firs_half_img = imgBlurred[:, :int(imgBlurred.shape[1]/2)]
-    second_half_img = imgBlurred[:, int(imgBlurred.shape[1]/2):]
-    firs_sum = firs_half_img.sum()
-    second_sum = second_half_img.sum()
-
-
-    imgThresh = imgBlurred.copy()
-    h, imgThresh[:, :int(imgBlurred.shape[1]/2)] = cv2.threshold(firs_half_img, firs_sum/half_ln - 255, 255, cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
-    h, imgThresh[:, int(imgBlurred.shape[1]/2):] = cv2.threshold(second_half_img, second_sum/half_ln - 255, 255, cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
-
-    return imgThresh
+    list_of_psb_chr, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    return list_of_psb_chr
 
 
-def kray_fill(imgThresh):
-    imgForCount = imgThresh.copy()
-    h, imgForCount = cv2.threshold(imgForCount, 1, 1, cv2.THRESH_BINARY_INV)
+def half_thresh(img_grayscale):
+    img_blurred = cv2.GaussianBlur(img_grayscale, (3, 3), 100)
 
-    ln = imgThresh.shape[1]
-    counterU = 0
-    counterB = imgThresh.shape[0] - 1
-    counterL = 0
-    counterR = imgThresh.shape[1] - 1
+    firs_half_img = img_blurred[:, :int(img_blurred.shape[1] / 2)]
+    second_half_img = img_blurred[:, int(img_blurred.shape[1] / 2):]
 
-    sm = imgForCount.sum(axis=1)
+    img_thresh = img_blurred.copy()
+    _, img_thresh[:, :int(img_blurred.shape[1] / 2)] = cv2.threshold(firs_half_img, 0, 255,
+                                                                     cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    _, img_thresh[:, int(img_blurred.shape[1] / 2):] = cv2.threshold(second_half_img, 0, 255,
+                                                                     cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+    return img_thresh
+
+
+def kray_fill(img_thresh, full_filling=False, full_left_right=True):
+    img_for_count = img_thresh.copy()
+    h, img_for_count = cv2.threshold(img_for_count, 1, 1, cv2.THRESH_BINARY_INV)
+
+    ln = img_thresh.shape[1]
+    counter_up = 0
+    counter_bt = img_thresh.shape[0] - 1
+    counter_lf = 1
+    counter_rg = img_thresh.shape[1] - 1
+
+    sm = img_for_count.sum(axis=1)
     for i in sm:
-        counterU += 1
+        counter_up += 1
         if i > int(ln / 100 * 40):
             break
 
     sm = sm[::-1]
     for i in sm:
         # p
-        counterB -= 1
+        counter_bt -= 1
         if i > int(ln / 100 * 70):
             break
 
-    ln = imgThresh.shape[0]
-    sm = imgForCount.sum(axis=0)
+    ln = img_thresh.shape[0]
+    sm = img_for_count.sum(axis=0)
     for i in sm:
-        counterL += 1
+        counter_lf += 1
         if i > int(ln / 100 * 60):
             break
 
     sm = sm[::-1]
     for i in sm:
-        counterR -= 1
+        counter_rg -= 1
         if i > int(ln / 100 * 60):
             break
+    if full_filling:
+        if counter_rg < img_thresh.shape[1] / 100 * 80:
+            counter_rg = 0
+        elif counter_lf > img_thresh.shape[1] / 100 * 20:
+            counter_lf = img_thresh.shape[1] - 1
+        elif counter_up > img_thresh.shape[0] / 100 * 20:
+            counter_up = img_thresh.shape[0] - 1
+        elif counter_bt < img_thresh.shape[0] / 100 * 80:
+            counter_bt = 0
 
-    imgThresh[:counterU] = 0
-    imgThresh[counterB:] = 0
-    imgThresh[:, :counterL] = 0
-    imgThresh[:, counterR:] = 0
+    img_thresh[:counter_up] = 0
+    img_thresh[counter_bt:] = 0
+    if full_left_right:
+        img_thresh[:, :counter_lf] = 0
+        img_thresh[:, counter_rg:] = 0
 
-    return imgThresh
-
-
-def kray_fill_new(imgThresh):
-    imgForCount = imgThresh.copy()
-    h, imgForCount = cv2.threshold(imgForCount, 1, 1, cv2.THRESH_BINARY_INV)
-
-    ln = imgThresh.shape[1]
-    counterU = 0
-    counterB = imgThresh.shape[0] - 1
-    counterL = 1
-    counterR = imgThresh.shape[1] - 1
-
-    sm = imgForCount.sum(axis=1)
-    for i in sm:
-        counterU += 1
-        if i > int(ln / 100 * 40):
-            break
-
-    sm = sm[::-1]
-    for i in sm:
-        # p
-        counterB -= 1
-        if i > int(ln / 100 * 70):
-            break
-
-    ln = imgThresh.shape[0]
-    sm = imgForCount.sum(axis=0)
-    for i in sm:
-        counterL += 1
-        if i > int(ln / 100 * 60):
-            break
-
-    sm = sm[::-1]
-    for i in sm:
-        counterR -= 1
-        if i > int(ln / 100 * 60):
-            break
-
-    imgThresh[:counterU] = 0
-    imgThresh[counterB:] = 0
-
-    return imgThresh
-
-def draw_top_line(listOfPossibleChars,imgThresh):
-    tops = [x.intBoundingRectY for x in listOfPossibleChars]
-    try:
-        topClearLine = int(sum(tops)/len(tops))
-        imgThresh[topClearLine, :] = 0
-    except ZeroDivisionError:
-        print('', end='')
-    return imgThresh
+    return img_thresh
 
 
+def draw_top_line(list_of_psb_chr, img_thresh):
+    if len(list_of_psb_chr):
+        tops = [x.pos_y for x in list_of_psb_chr]
+        btm_clear_line = np.max([int(np.mean(tops)), 0])
+        img_thresh[btm_clear_line, :] = 0
 
-def draw_btm_line(listOfPossibleChars, imgThresh):
-    if len(listOfPossibleChars):
-        btms = [x.intBoundingRectY + x.intBoundingRectHeight for x in listOfPossibleChars]
-        # print(imgThresh.shape[0])
-        btmClearLine = np.min([int(np.mean(btms)) + 1, imgThresh.shape[0] - 1])
-        imgThresh[btmClearLine, :] = 0
-
-    return imgThresh
+    return img_thresh
 
 
-def find_psbl_chr(imgThresh):
-    listOfPossibleChars = []
-    noneChar = []
-    imgThreshCopy = imgThresh.copy()
+def draw_btm_line(list_of_psb_chr, img_thresh):
+    if len(list_of_psb_chr):
+        btms = [x.pos_y + x.height for x in list_of_psb_chr]
+        btm_clear_line = np.min([int(np.mean(btms)) + 1, img_thresh.shape[0] - 1])
+        img_thresh[btm_clear_line, :] = 0
 
-            # find all contours in plate
-    imgContours, contours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    for contour in range(len(contours)):                        # for each contour
-        possibleChar = PossibleChar.PossibleChar(contours[contour])
-
-        if checkIfPossibleChar_PreProc(possibleChar):              # if contour is a possible char, note this does not compare to other chars (yet) . . .
-            listOfPossibleChars.append(possibleChar)
-        else:
-            noneChar.append(possibleChar)
-    numberOfChars = len(listOfPossibleChars)
-    listOfPossibleChars = sorted(listOfPossibleChars, key=lambda obj: obj.intBoundingRectArea)
-    return listOfPossibleChars, numberOfChars, noneChar
+    return img_thresh
 
 
+def matching_broken_chars(img_thresh, none_char):
+    matched_none_char = []
+    im_width = img_thresh.shape[1]
+    im_height = img_thresh.shape[0]
+    _, img_for_count = cv2.threshold(img_thresh, 1, 1, cv2.THRESH_BINARY_INV)
 
+    for i in none_char:
+        for j in none_char:
+            if i != j and i not in matched_none_char and j not in matched_none_char:
+                if abs(i.pos_x - j.pos_x) < im_width / 100 * 10 and abs(i.center_y - j.center_y) > im_height / 100 * 10\
+                   and j.area > 30 and i.area > 30 and j.width > 5 and i.width > 5 and j.height > 5 and i.height > 5 \
+                   and j.height + j.pos_y < im_height - 6 and j.pos_y > im_height / 100 * 10 \
+                   and i.height + i.pos_y < im_height - 6 and i.pos_y > im_height / 100 * 10:
 
-
-def find_psbl_chr_4broken(imgThresh):
-    listOfPossibleChars = []
-    noneChar = []
-    imgThreshCopy = imgThresh.copy()
-
-            # find all contours in plate
-    imgContours, contours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    for contour in range(len(contours)):                        # for each contour
-        possibleChar = PossibleChar.PossibleChar(contours[contour])
-
-        if checkIfPossibleChar_Br(possibleChar):              # if contour is a possible char, note this does not compare to other chars (yet) . . .
-            listOfPossibleChars.append(possibleChar)
-        else:
-            noneChar.append(possibleChar)
-    numberOfChars = len(listOfPossibleChars)
-    listOfPossibleChars = sorted(listOfPossibleChars, key=lambda obj: obj.intBoundingRectArea)
-    return listOfPossibleChars, numberOfChars, noneChar
-
-
-def matching_broken_chars(imgThresh, noneChar, imgForCount):
-    matchNoneChar = []
-    for i in noneChar:
-        for j in noneChar:
-            if i != j and i not in matchNoneChar and j not in matchNoneChar:
-                if abs(i.intBoundingRectX - j.intBoundingRectX) < imgThresh.shape[1] / 100 * 10 and abs(
-                        i.intCenterY - j.intCenterY) > imgThresh.shape[0] / 100 * 10 \
-                        and j.intBoundingRectArea > 30 and i.intBoundingRectArea > 30 \
-                        and j.intBoundingRectWidth > 5 and i.intBoundingRectWidth > 5 \
-                        and j.intBoundingRectHeight > 5 and i.intBoundingRectHeight > 5 \
-                        and j.intBoundingRectHeight + j.intBoundingRectY < imgThresh.shape[
-                    0] - 6 and j.intBoundingRectY > imgThresh.shape[0] / 100 * 10 \
-                        and i.intBoundingRectHeight + i.intBoundingRectY < imgThresh.shape[
-                    0] - 6 and i.intBoundingRectY > imgThresh.shape[0] / 100 * 10:
-                    sm = imgForCount[:, i.intBoundingRectX:i.intBoundingRectX + i.intBoundingRectWidth].sum(axis=0)
-                    sm = enumerate(sm, start=i.intBoundingRectX)
-                    matchNoneChar.append(i)
-                    matchNoneChar.append(j)
+                    sm = img_for_count[:, i.pos_x:i.pos_x + i.width].sum(axis=0)
+                    sm = enumerate(sm, start=i.pos_x)
                     sm = sorted(sm, key=lambda x: x[1])
-                    if i.intBoundingRectWidth >= 4:
-                        colForFill = 4
+
+                    matched_none_char.append(i)
+                    matched_none_char.append(j)
+                    if i.width >= 4:
+                        col_for_fill = 4
                     else:
-                        colForFill = 2
-                    for g in range(colForFill):
-                        for k in range(imgThresh.shape[0] - 1):
-                            if imgThresh[k, sm[g][0]] == 255 and imgThresh[k + 1, sm[g][0]] == 0:
-                                for l in range(k, imgThresh.shape[0] - 1):
-                                    if imgThresh[l + 1, sm[g][0]] == 0:
-                                        imgThresh[l + 1, sm[g][0]] = 255
+                        col_for_fill = 2
+
+                    for g in range(col_for_fill):
+                        for k in range(im_height - 1):
+                            if img_thresh[k, sm[g][0]] == 255 and img_thresh[k + 1, sm[g][0]] == 0:
+                                for l in range(k, im_height - 1):
+                                    if img_thresh[l + 1, sm[g][0]] == 0:
+                                        img_thresh[l + 1, sm[g][0]] = 255
                                     else:
                                         break
                                 break
 
-                # height, width = imgThresh.shape
-                # imgContours = np.zeros((height, width, 3), np.uint8)
-                # cv2.drawContours(imgContours, i.contour, -1, Main.SCALAR_WHITE)
-                # cv2.imshow('kontur', imgContours)
-                # cv2.waitKey(0)
-    return imgThresh
+    return img_thresh
 
 
-def replace_last_first(imgThresh, listOfPossibleChars, numberOfChars):
-    listOfPossibleChars = sorted(listOfPossibleChars, key=lambda obj: obj.intCenterX)
+def replace_last_first(img_thresh, list_of_psb_chr, nmbr_of_chrs):
+    list_of_psb_chr = sorted(list_of_psb_chr, key=lambda obj: obj.center_x)
     sm = 0
-    numberOfChars = len(listOfPossibleChars)
-    for i in range(1, numberOfChars - 1):
-        sm += listOfPossibleChars[i + 1].intBoundingRectX - (listOfPossibleChars[i].intBoundingRectX + listOfPossibleChars[i].intBoundingRectWidth)
-    meandiff = sm / (numberOfChars - 1)
-    # print(meandiff, abs(listOfPossibleChars[1].intBoundingRectX - (listOfPossibleChars[0].intBoundingRectX + listOfPossibleChars[0].intBoundingRectWidth)))
-    if abs(listOfPossibleChars[1].intBoundingRectX - (listOfPossibleChars[0].intBoundingRectX + listOfPossibleChars[0].intBoundingRectWidth)) > meandiff or abs(
-            listOfPossibleChars[1].intBoundingRectY - listOfPossibleChars[0].intBoundingRectY) > imgThresh.shape[0] / 100 * 3 or abs(
-        (listOfPossibleChars[1].intBoundingRectY + listOfPossibleChars[1].intBoundingRectHeight) -
-        (listOfPossibleChars[0].intBoundingRectY + listOfPossibleChars[0].intBoundingRectHeight)) > imgThresh.shape[0] / 100 * 3:
-        imgThresh[:, :listOfPossibleChars[0].intBoundingRectX + listOfPossibleChars[0].intBoundingRectWidth] = 0
-    if listOfPossibleChars[-1].intCenterX - listOfPossibleChars[-2].intCenterX > meandiff and abs(
-            listOfPossibleChars[-1].intCenterY - listOfPossibleChars[-2].intCenterY) > imgThresh.shape[0] / 100 * 10:
-        imgThresh[:, listOfPossibleChars[-1].intBoundingRectX:] = 0
-    return imgThresh
+    im_height = img_thresh.shape[0]
+
+    # find mean spacing between symbols
+    for i in range(1, nmbr_of_chrs - 1):
+        sm += list_of_psb_chr[i + 1].pos_x - (list_of_psb_chr[i].pos_x + list_of_psb_chr[i].width)
+    mean_spacing = sm / (nmbr_of_chrs - 1)
+
+    # check if first symbol is redundant
+    cur_symb = list_of_psb_chr[0]
+    next_symb = list_of_psb_chr[1]
+    if abs(next_symb.pos_x - (cur_symb.pos_x + cur_symb.width)) > mean_spacing or \
+            abs(next_symb.pos_y - cur_symb.pos_y) > im_height / 100 * 3 or \
+            abs((next_symb.pos_y + next_symb.height) - (cur_symb.pos_y + cur_symb.height)) > im_height / 100 * 3:
+        img_thresh[:, :cur_symb.pos_x + cur_symb.width] = 0
+        if nmbr_of_chrs <= 8:
+            return img_thresh
+        else:
+            # check if last symbol is redundant
+            cur_symb = list_of_psb_chr[-1]
+            prev_symb = list_of_psb_chr[-2]
+            if cur_symb.center_x - prev_symb.center_x > mean_spacing and \
+                    abs(cur_symb.center_y - prev_symb.center_y) > im_height / 100 * 10:
+                img_thresh[:, cur_symb.pos_x:] = 0
+
+    return img_thresh
 
 
-def separate_stick(imgThresh, listOfPossibleChars, noneChar):
-    listForClear = []
+def separate_stick(img_thresh, list_of_psb_chr, none_chars):
+    list_for_separate_line = []
 
+    for i in none_chars:
+        if len(list_of_psb_chr) > 2 and i.area > list_of_psb_chr[-1].area * 1.5 and \
+                abs(i.center_y - list_of_psb_chr[-2].center_y) < 10 < i.height:
 
-    for i in noneChar:
-        if i.intBoundingRectArea > listOfPossibleChars[-1].intBoundingRectArea*1.5 and \
-                abs(i.intCenterY - listOfPossibleChars[-2].intCenterY) < 10 and \
-            i.intBoundingRectHeight > 10:
+            if list_of_psb_chr[-2].width / i.width > 0.33:
+                list_for_separate_line.append(int(i.center_x))
 
-            # print('dsgksforf')
-            if listOfPossibleChars[-2].intBoundingRectWidth / i.intBoundingRectWidth > 0.33:
-                listForClear.append(int(i.intCenterX))
-
-            elif listOfPossibleChars[-2].intBoundingRectWidth / i.intBoundingRectWidth > 0.25:
-                step = i.intBoundingRectWidth / 3
-                listForClear.append(int(i.intBoundingRectX + step))
-                listForClear.append(int(i.intBoundingRectX + step * 2))
+            elif list_of_psb_chr[-2].width / i.width > 0.25:
+                step = i.width / 3
+                list_for_separate_line.append(int(i.pos_x + step))
+                list_for_separate_line.append(int(i.pos_x + step * 2))
 
             else:
-                step = i.intBoundingRectWidth / 4
-                listForClear.append(int(i.intBoundingRectX + step))
-                listForClear.append(int(i.intBoundingRectX + step * 2))
-                listForClear.append(int(i.intBoundingRectX + step * 3))
+                step = i.width / 4
+                list_for_separate_line.append(int(i.pos_x + step))
+                list_for_separate_line.append(int(i.pos_x + step * 2))
+                list_for_separate_line.append(int(i.pos_x + step * 3))
+
+    for i in list_for_separate_line:
+        img_thresh[:, i] = 0
+
+    return img_thresh
 
 
+def del_blue(img_orig, list_of_psb_chr, img_thresh):
 
-    for i in listForClear:
-        imgThresh[:, i] = 0
-        # cv2.imshow('dj', imgThresh)
-        # cv2.waitKey(0)
-
-    return imgThresh
-
-
-def del_blue(imgOriginal, listOfPossibleChars, imgThresh):
     blue = [np.array([86, 31, 4]), np.array([255, 150, 150])]
-    mask = cv2.inRange(imgOriginal, blue[0], blue[1])
-    output = cv2.bitwise_and(imgOriginal, imgOriginal, mask=mask)
+    mask = cv2.inRange(img_orig, blue[0], blue[1])
+    output = cv2.bitwise_and(img_orig, img_orig, mask=mask)
 
-    # show the images
     output = cv2.cvtColor(output, cv2.COLOR_BGR2GRAY)
-    # output = half_thresh(output)
-    d, output = cv2.threshold(output, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    _, output = cv2.threshold(output, 1, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    list_of_psb_chr = sorted(list_of_psb_chr, key=lambda x: x.center_x)
+    frst_char = list_of_psb_chr[0]
+    roi = output[frst_char.pos_y:frst_char.pos_y + frst_char.height, frst_char.pos_x:frst_char.pos_x + frst_char.width]
+
+    _, roi = cv2.threshold(roi, 1, 1, cv2.THRESH_BINARY)
+
+    if np.mean(roi) < 0.3:
+        img_thresh[:, :frst_char.pos_x + frst_char.width] = 0
+
+    return img_thresh
 
 
-    listOfPossibleChars = sorted(listOfPossibleChars, key=lambda x: x.intCenterX)
-    frstChar = listOfPossibleChars[0]
-    roi = output[frstChar.intBoundingRectY:frstChar.intBoundingRectY + frstChar.intBoundingRectHeight,
-          frstChar.intBoundingRectX:frstChar.intBoundingRectX + frstChar.intBoundingRectWidth]
-    # cv2.imshow("images", roi)
-    # cv2.waitKey(0)
-
-    h, roi = cv2.threshold(roi, 1, 1, cv2.THRESH_BINARY)
-
-    # print(roi)
-    sm = np.sum(roi)
-    area = roi.shape[1] * roi.shape[0]
-    if sm / area < 0.3:
-        for i in range(frstChar.intBoundingRectX + frstChar.intBoundingRectWidth):
-            imgThresh[:, i] = 0
-    # cv2.imshow("images", imgThresh)
-    # cv2.waitKey(0)
-    # for i in listFo i] = 0
-    return imgThresh
-
-def new_kray_fill(imgThresh, imgGrayScale, listOfPossibleChars):
-
-
-
-
-
-
-    im2 = imgThresh
-    width, height = im2.shape
+def histogram_kray_fill(img_thresh, img_grayscale, list_of_psb_chr):
+    im = img_thresh
+    height, width = im.shape
     hist = []
+    frame = 5
 
-    for x in range(height -1):
-        column = im2[0:height -1, x:x+1]
+    # calculating histogram
+    for x in range(width - 1):
+        column = im[0:width - 1, x:x + 1]
         hist.append(np.sum(column) / len(column))
 
-
-
     hist = np.array(hist)
-    # border = np.percentile(hist[10:-11], 75)
     border = np.mean(hist[10:-11]) + 5
 
-    # print(hist)
-    frame = 5
-    indx = 0
-    indx2 = 0
-    for x in range(int(height/frame) -1):
-        mn = np.amin(hist[x*frame +1:(x+1)*frame +1])
-        new_mn = np.amin(hist[(x+1)*frame +1:(x+2)*frame +1])
-        # print(hist[x*frame:(x+1)*frame], mn, hist[(x+1)*frame:(x+2)*frame], new_mn)
+    indx_min = 0
+    indx_max = 0
+    for x in range(int(width / frame) - 1):
+        mn = np.amin(hist[x * frame + 1:(x + 1) * frame + 1])
+        new_mn = np.amin(hist[(x + 1) * frame + 1:(x + 2) * frame + 1])
 
         if mn < new_mn:
-            indx = np.argmin(hist[x*frame +1:x*frame+frame +1]) + x*frame +1
-            # imgThresh[:, :indx] = 0
+            indx_min = np.argmin(hist[x * frame + 1:(x + 1) * frame + 1]) + x * frame + 1
             break
 
-
-
-
-
-
-
-    frame = 5
     first_max = np.max(hist[:11])
-    for x in range(int(height/frame)):
-        mx = np.amax(hist[x*frame:(x+1)*frame])
-        new_mx = np.amax(hist[(x+1)*frame:(x+2)*frame])
-        indx2 = np.argmax(hist[x * frame:(x+1) * frame ]) + x * frame
+    for x in range(int(width / frame)):
+        mx = np.amax(hist[x * frame:(x + 1) * frame])
+        new_mx = np.amax(hist[(x + 1) * frame:(x + 2) * frame])
+        indx_max = np.argmax(hist[x * frame:(x + 1) * frame]) + x * frame
 
-        if mx > new_mx and ((mx > border and indx2>indx) or (mx > first_max +10 and indx2<indx)):
-            indx2 = np.argmax(hist[x*frame:x*frame+frame]) + x*frame
+        if mx > new_mx and ((mx > border and indx_max > indx_min) or (mx > first_max + 10 and indx_max < indx_min)):
+            indx_max = np.argmax(hist[x * frame:x * frame + frame]) + x * frame
 
-
-            for i, kd in zip(listOfPossibleChars, range(len(listOfPossibleChars))):
-                if indx2 < i.intCenterX and indx2 > i. intBoundingRectX:
-                    indx2 = i.intBoundingRectX - 2
+            for i, kd in zip(list_of_psb_chr, range(len(list_of_psb_chr))):
+                if i.center_x > indx_max > i.pos_x:
+                    indx_max = i.pos_x - 2
                     break
-            if indx2 < 0:
-                indx2 = 1
 
-            imgThresh = imgThresh[:, indx2:]
-            imgGrayScale = imgGrayScale[:, indx2:]
+            if indx_max < 0:
+                indx_max = 1
+
+            img_thresh = img_thresh[:, indx_max:]
+            img_grayscale = img_grayscale[:, indx_max:]
             break
-    shift = indx2
 
+    shift = indx_max
 
-    # plt.plot(hist)
-    # plt.plot([0, height], [border, border])
-    # plt.plot([indx, indx], [np.max(hist), np.min(hist)], c='r')
-    #
-    # plt.plot([indx2, indx2], [np.max(hist), np.min(hist)])
-    # #
-    # #
-    # plt.show()
-
-
-
-
-
-
-
-############################################################################################
-
-    im2 = imgThresh
-    width, height = im2.shape
+    im = img_thresh
+    height, width = im.shape
     hist = []
 
-    for x in range(height -1):
-        column = im2[0:height -1, x:x+1]
+    for x in range(width - 1):
+        column = im[0:width - 1, x:x + 1]
         hist.append(np.sum(column) / len(column))
-
-
 
     hist = np.array(hist)
 
+    indx_min = 0
+    indx_max = 0
+    for x in range(int(width / frame), 1, -1):
+        mn = np.amin(hist[(x - 1) * frame:x * frame])
+        new_mn = np.amin(hist[(x - 2) * frame:(x - 1) * frame])
 
-    frame = 5
-    indx = 0
-    indx2 = 0
-    for x in range(int(height/frame), 1, -1):
-        mn = np.amin(hist[x*frame-frame:x*frame])
-        new_mn = np.amin(hist[(x-1)*frame-frame:(x-1)*frame])
         if mn < new_mn:
-            indx = np.argmin(hist[x*frame-frame:x*frame]) + x*frame-frame
+            indx_min = np.argmin(hist[(x - 1) * frame:x * frame]) + (x - 1) * frame
             break
 
-
-
-    frame = 5
     first_max = np.max(hist[-12:])
-    for x in range(int(height/frame), 1, -1):
-        mx = np.max(hist[x*frame-frame:x*frame])
-        new_mx = np.max(hist[(x-1)*frame-frame:(x-1)*frame])
-        indx2 = np.argmax(hist[x*frame-frame:x*frame]) + x * frame-frame
+    for x in range(int(width / frame), 1, -1):
+        mx = np.max(hist[(x - 1) * frame:x * frame])
+        new_mx = np.max(hist[(x - 2) * frame:(x - 1) * frame])
+        indx_max = np.argmax(hist[(x - 1) * frame:x * frame]) + (x - 1) * frame
 
-        if mx > new_mx and ((mx > border and indx2<indx) or (mx > first_max + 10 and indx2>indx)):
+        if mx > new_mx and ((mx > border and indx_max < indx_min) or (mx > first_max + 10 and indx_max > indx_min)):
+            indx_max = np.argmax(hist[(x - 1) * frame:x * frame]) + (x - 1) * frame + 3
 
-            indx2 = np.argmax(hist[x*frame-frame:x*frame]) + x*frame-frame + 3
-
-            for i, kd in zip(listOfPossibleChars, range(len(listOfPossibleChars))):
-
-                # height, width = imgThresh.shape
-                # imgContoursd = np.zeros((height, width, 3), np.uint8)
-                # lst = []
-                # for j in listOfPossibleChars:
-                #     lst.append(j.contour)
-                # cv2.drawContours(imgContoursd, lst, k, Main.SCALAR_WHITE)
-                # imgContoursd[:, indx2 + shift] = 255
-                #
-                # cv2.imshow('konturh', imgContoursd)
-                #
-                # cv2.waitKey(0)
-
-                if indx2 + shift > i.intCenterX and indx2 +shift < i. intBoundingRectX + i.intBoundingRectWidth:
-                    indx2 = i.intBoundingRectX + i.intBoundingRectWidth + 2 - shift
+            for i, kd in zip(list_of_psb_chr, range(len(list_of_psb_chr))):
+                if i.center_x < indx_max + shift < i.pos_x + i.width:
+                    indx_max = i.pos_x + i.width + 2 - shift
                     break
-            if indx2 > height - 1:
-                indx2 = height - 1
-            imgThresh = imgThresh[:, :indx2]
-            imgGrayScale = imgGrayScale[:, :indx2]
 
+            if indx_max > width - 1:
+                indx_max = width - 2
+
+            img_thresh = img_thresh[:, :indx_max]
+            img_grayscale = img_grayscale[:, :indx_max]
             break
-    # cv2.imshow('loljjjjjjjjjjjdjj', imgThresh)
-    # cv2.waitKey(0)
 
-    # plt.plot(hist)
-    # plt.plot([0, height], [border, border])
-    # plt.plot([indx, indx], [np.max(hist), np.min(hist)])
-    # #
-    # #
-    # plt.show()
-
-    return imgThresh, imgGrayScale
+    return img_thresh, img_grayscale
 
 
+# PreProc[70, 3, 15, 0.1, 1.5] find_psbl_char
+# Br[100, 4, 15, 0.15, 1] find_psbl_chr_4broken
 
-MIN_PIXEL_WIDTH_PP = 3 ########################3
-MIN_PIXEL_HEIGHT_PP = 15 ######################8
-
-MIN_ASPECT_RATIO_PP = 0.1######################0.15
-MAX_ASPECT_RATIO_PP = 1.5#######################1
-
-MIN_PIXEL_AREA_PP = 70##########################100
-
-def checkIfPossibleChar_PreProc(possibleChar):
-    # this function is a 'first pass' that does a rough check on a contour to see if it could be a char,
-    # note that we are not (yet) comparing the char to other chars to look for a group
-    if (possibleChar.intBoundingRectArea > MIN_PIXEL_AREA_PP and
-            possibleChar.intBoundingRectWidth > MIN_PIXEL_WIDTH_PP and possibleChar.intBoundingRectHeight > MIN_PIXEL_HEIGHT_PP and
-            MIN_ASPECT_RATIO_PP < possibleChar.fltAspectRatio < MAX_ASPECT_RATIO_PP):
-        return True
-    else:
-        return False
-
-
-MIN_PIXEL_WIDTH_Br = 4 ########################3
-MIN_PIXEL_HEIGHT_Br = 15 ######################8
-
-MIN_ASPECT_RATIO_Br = 0.15######################0.15
-MAX_ASPECT_RATIO_Br = 1
-
-MIN_PIXEL_AREA_Br = 100
-
-def checkIfPossibleChar_Br(possibleChar):
-    # this function is a 'first pass' that does a rough check on a contour to see if it could be a char,
-    # note that we are not (yet) comparing the char to other chars to look for a group
-    if (possibleChar.intBoundingRectArea > MIN_PIXEL_AREA_Br and
-            possibleChar.intBoundingRectWidth > MIN_PIXEL_WIDTH_Br and possibleChar.intBoundingRectHeight > MIN_PIXEL_HEIGHT_Br and
-            MIN_ASPECT_RATIO_Br < possibleChar.fltAspectRatio < MAX_ASPECT_RATIO_Br):
-        return True
-    else:
-        return False
-
-
-def rotate(imgOriginal, listOfMatchingChars):
-    listOfMatchingChars.sort(
-        key=lambda matchingChar: matchingChar.intCenterX)  # sort chars from left to right based on x position
+def rotate(img_orig, list_of_matching_chars):
+    list_of_matching_chars.sort(key=lambda char: char.center_x)
 
     # calculate the center point of the plate
-    fltPlateCenterX = (listOfMatchingChars[0].intCenterX + listOfMatchingChars[
-        len(listOfMatchingChars) - 1].intCenterX) / 2.0
-    fltPlateCenterY = (listOfMatchingChars[0].intCenterY + listOfMatchingChars[
-        len(listOfMatchingChars) - 1].intCenterY) / 2.0
+    flt_plate_center_x = (list_of_matching_chars[0].center_x + list_of_matching_chars[
+        len(list_of_matching_chars) - 1].center_x) / 2.0
+    flt_plate_center_y = (list_of_matching_chars[0].center_y + list_of_matching_chars[
+        len(list_of_matching_chars) - 1].center_y) / 2.0
     # This is the probable centeral point of this plate.
-    ptPlateCenter = fltPlateCenterX, fltPlateCenterY
-
-
-
+    pt_plate_center = flt_plate_center_x, flt_plate_center_y
 
     # calculate correction angle of plate region
-    fltOpposite = listOfMatchingChars[-1].intCenterY - listOfMatchingChars[0].intCenterY
-    fltHypotenuse = DetectChars.distanceBetweenChars(listOfMatchingChars[0], listOfMatchingChars[-1])
+    flt_opposite = list_of_matching_chars[-1].center_y - list_of_matching_chars[0].center_y
+    flt_hypotenuse = DetectChars.distance_between_chars(list_of_matching_chars[0], list_of_matching_chars[-1])
     try:
-        fltCorrectionAngleInRad = math.asin(fltOpposite / fltHypotenuse)
+        flt_correction_angle_in_rad = math.asin(flt_opposite / flt_hypotenuse)
     except:
-        fltCorrectionAngleInRad = 0
-    fltCorrectionAngleInDeg = fltCorrectionAngleInRad * (180.0 / math.pi)
-
+        flt_correction_angle_in_rad = 0
+    flt_correction_angle_in_deg = flt_correction_angle_in_rad * (180.0 / math.pi)
 
     # final steps are to perform the actual rotation
-
     # get the rotation matrix for our calculated correction angle
-    rotationMatrix = cv2.getRotationMatrix2D(tuple(ptPlateCenter), fltCorrectionAngleInDeg,
-                                             1.0)  # The first poin tis the point of rotaion or center,theta and scaling factor
+    # The first poin tis the point of rotaion or center,theta and scaling factor
+    rotation_matrix = cv2.getRotationMatrix2D(tuple(pt_plate_center), flt_correction_angle_in_deg, 1.0)
 
-    height, width = imgOriginal.shape  # unpack original image width and height
+    height, width = img_orig.shape  # unpack original image width and height
 
-    imgRotated = cv2.warpAffine(imgOriginal, rotationMatrix, (width, height))  # rotate the entire image
+    img_rotated = cv2.warpAffine(img_orig, rotation_matrix, (width, height))  # rotate the entire image
 
-    return imgRotated
-
-
+    return img_rotated
 
 
-def preprocessS_without_crop(imgOriginal):
-
-
-    imgBl = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2GRAY)
-    imgGrayscale = copy.deepcopy(imgBl)
-
+def preprocess_plate_without_croping(img_orig):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(3, 3))
 
-    im = clahe.apply(imgBl)
-    # im = cv2.GaussianBlur(im, (3,3), 0)
+    im = clahe.apply(cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY))
 
+    img_thresh = half_thresh(im)
+    img_thresh = kray_fill(img_thresh, full_filling=True)
 
-    # im= cv2.fastNlMeansDenoising(imgBl, h=1, templateWindowSize=3, searchWindowSize=3)
-    # cv2.imshow('plate', im)
-    # cv2.waitKey(0)
+    list_of_possible_chars, number_of_chars, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
 
+    if number_of_chars > 7:
+        img_thresh = replace_last_first(img_thresh, list_of_possible_chars, number_of_chars)
+        img_thresh = del_blue(img_orig, list_of_possible_chars, img_thresh)
 
-    imgThresh = half_thresh(im)
-    imgThresh = kray_fill_new(imgThresh)
+    list_of_possible_chars, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
 
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr(imgThresh)
-    if numberOfChars > 2:
-        imgThresh = separate_stick(imgThresh, listOfPossibleChars, noneChar)
-    listOfPossibleChars, _, _ = find_psbl_chr(imgThresh)
+    img_thresh = draw_top_line(list_of_possible_chars, img_thresh)
+    img_thresh = draw_btm_line(list_of_possible_chars, img_thresh)
 
+    list_of_possible_chars, number_of_chars, none_char = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
 
+    if number_of_chars >= 2:
+        img_thresh = separate_stick(img_thresh, list_of_possible_chars, none_char)
 
-    # croped = False
-    # if len(listOfPossibleChars) > 7 or len(listOfPossibleChars) == 0:
-    croped = True
-    #     # print('jhfewkhwefohvddcdd')
-    # else:
-    #     imgThresh = im.copy()
-    imgThresh = half_thresh(im)
-    imgThresh = kray_fill_I(imgThresh)
+    _, _, none_char = DetectChars.find_psbl_chr(img_thresh, [100, 4, 15, 0.15, 1])
 
+    img_for_count = img_thresh.copy()
+    _, img_for_count = cv2.threshold(img_for_count, 1, 1, cv2.THRESH_BINARY_INV)
+    img_thresh = matching_broken_chars(img_thresh, none_char)
 
-    imgForCount = imgThresh.copy()
-    h, imgForCount = cv2.threshold(imgForCount, 1, 1, cv2.THRESH_BINARY_INV)
-
-    listOfPossibleChars, _, _ = find_psbl_chr(imgThresh)
-
-    # while True:
-    if len(listOfPossibleChars) > 7:
-        imgThresh = replace_last_first(imgThresh, listOfPossibleChars, len(listOfPossibleChars))
-
-        imgThresh = del_blue(imgOriginal, listOfPossibleChars, imgThresh)
-
-
-    listOfPossibleChars, _, _ = find_psbl_chr(imgThresh)
-
-
-    imgThresh = draw_top_line(listOfPossibleChars, imgThresh)
-    imgThresh = draw_btm_line(listOfPossibleChars, imgThresh)
-
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr(imgThresh)
-
-    if numberOfChars >= 2:
-        imgThresh = separate_stick(imgThresh, listOfPossibleChars, noneChar)
-
-
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr_4broken(imgThresh)
-
-    imgThresh = matching_broken_chars(imgThresh, noneChar, imgForCount)
-
-
-
-    # imgContours, contours, npaHierarchy = cv2.findContours(imgThresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # listOfPossibleChars = []
-    #
-    # # height, width = imgThresh.shape
-    # # imgContours = np.zeros((height, width, 3), np.uint8)
-    # for contour in range(len(contours)):                        # for each contour
-    #     possibleChar = PossibleChar.PossibleChar(contours[contour])
-    #     if DetectChars.checkIfPossibleChar(possibleChar):              # if contour is a possible char, note this does not compare to other chars (yet) . . .
-    #         listOfPossibleChars.append(possibleChar)
-
-
-
-    listOfPossibleChars, _, _ = find_psbl_chr(imgThresh)
-
-
-
-
-
-
-
-    listOfPossibleChars, _, _ = find_psbl_chr(imgThresh)
-    height, width = imgThresh.shape
-    imgContours = np.zeros((height, width), np.uint8)
-    imgForRcgnz = np.zeros((height, width), np.uint8)
-
-    imgForRcgnzCopy = imgGrayscale.copy()
-    for i in listOfPossibleChars:
-        x1 = np.max([i.intBoundingRectX - 2, 0])
-        y1 = np.min([i.intBoundingRectY + i.intBoundingRectHeight + 1, height-1])
-        roi = imgForRcgnzCopy[:, x1: i.intBoundingRectX + i.intBoundingRectWidth + 2]
-
-        h, imgForRcgnz[i.intBoundingRectY - 1:y1, x1: i.intBoundingRectX + i.intBoundingRectWidth + 2] = \
-            cv2.threshold(roi[i.intBoundingRectY - 1:y1, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-        h, imgContours[i.intBoundingRectY - 1:y1,
-           x1: i.intBoundingRectX + i.intBoundingRectWidth + 2] = \
-            cv2.threshold(roi[i.intBoundingRectY - 1:y1, :], 2, 255,
-                          cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-
-
-
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr_4broken(imgContours)
-
-
-    if numberOfChars >= 2:
-        imgContours = separate_stick(imgContours, listOfPossibleChars, noneChar)
-
-    listOfPossibleChars, numberOfChars, noneChar = find_psbl_chr_4broken(imgContours)
-    imgContours = matching_broken_chars(imgContours, noneChar, imgForCount)
-
-    kernel = np.ones((3, 3), np.uint8)
-    imgForRcgnz = cv2.erode(imgForRcgnz, kernel)
-    # imgContours =
-    # cv2.imshow('Erod', imgContours)
-    # cv2.waitKey(0)
-    return imgGrayscale, imgContours, imgForRcgnz
-
-
-
-
-
-
-
-
-
-MIN_PIXEL_WIDTH_I = 10 ########################3
-MIN_PIXEL_HEIGHT_I = 20 ######################8
-
-MIN_ASPECT_RATIO_I = 0.1######################0.15
-MAX_ASPECT_RATIO_I = 1.5#######################1
-
-MIN_PIXEL_AREA_I = 100
-
-def checkIfPossibleChar_I(possibleChar):
-    # this function is a 'first pass' that does a rough check on a contour to see if it could be a char,
-    # note that we are not (yet) comparing the char to other chars to look for a group
-    if (possibleChar.intBoundingRectArea > MIN_PIXEL_AREA_I and
-            possibleChar.intBoundingRectWidth > MIN_PIXEL_WIDTH_I and possibleChar.intBoundingRectHeight > MIN_PIXEL_HEIGHT_I and
-            MIN_ASPECT_RATIO_I < possibleChar.fltAspectRatio < MAX_ASPECT_RATIO_I):
-        return True
-    else:
-        return False
-
-def find_psbl_chr_intrnl(imgThresh):
-    listOfPossibleChars = []
-    noneChar = []
-    imgThreshCopy = imgThresh.copy()
-
-            # find all contours in plate
-    imgContours, contours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    Ar = imgThresh.shape[0] * imgThresh.shape[1]
-    for contour in range(len(contours)):                        # for each contour
-        possibleChar = PossibleChar.PossibleChar(contours[contour])
-        min_ar = possibleChar.intBoundingRectHeight * possibleChar.intBoundingRectWidth
-        print(min_ar/Ar)
-        if checkIfPossibleChar_I(possibleChar) and 0.04 < min_ar/Ar < 0.1 :              # if contour is a possible char, note this does not compare to other chars (yet) . . .
-            listOfPossibleChars.append(possibleChar)
-        else:
-            noneChar.append(possibleChar)
-    numberOfChars = len(listOfPossibleChars)
-    listOfPossibleChars = sorted(listOfPossibleChars, key=lambda obj: obj.intBoundingRectArea)
-    return listOfPossibleChars, numberOfChars, noneChar
-
-
-def kray_fill_I(imgThresh):
-    imgForCount = imgThresh.copy()
-    h, imgForCount = cv2.threshold(imgForCount, 1, 1, cv2.THRESH_BINARY_INV)
-
-    ln = imgThresh.shape[1]
-    counterU = 0
-    counterB = imgThresh.shape[0] - 1
-    counterL = 0
-    counterR = imgThresh.shape[1] - 1
-
-    sm = imgForCount.sum(axis=1)
-    for i in sm:
-        counterU += 1
-        if i > int(ln / 100 * 40):
-            break
-
-    sm = sm[::-1]
-    for i in sm:
-        # p
-        counterB -= 1
-        if i > int(ln / 100 * 70):
-            break
-
-    ln = imgThresh.shape[0]
-    sm = imgForCount.sum(axis=0)
-    for i in sm:
-        counterL += 1
-        if i > int(ln / 100 * 60):
-            break
-
-    sm = sm[::-1]
-    for i in sm:
-        counterR -= 1
-        if i > int(ln / 100 * 60):
-            break
-    if counterR < imgThresh.shape[1] / 100 * 80:
-        counterR = 0
-    elif counterL > imgThresh.shape[1] / 100 * 20:
-        counterL = imgThresh.shape[1] - 1
-    elif counterU > imgThresh.shape[0] / 100 * 20:
-        counterU = imgThresh.shape[0] - 1
-    elif counterB < imgThresh.shape[0] / 100 * 80:
-        counterB = 0
-
-    imgThresh[:counterU] = 0
-    imgThresh[counterB:] = 0
-    imgThresh[:, :counterL] = 0
-    imgThresh[:, counterR:] = 0
-
-    return imgThresh
+    return img_thresh

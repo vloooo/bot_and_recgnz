@@ -1,8 +1,8 @@
 import phrases
 
 ents = {
-    'pst': ["yes", "yeah", "exactly", "ok", "yeh", "yep", "correct", "affirmative", "okey"
-            "perfect", "great", "cool", "accept", "microwavable", "precisely", "available"],
+    'pst': ["yes", "yeah", "exactly", "ok", "yeh", "yep", "correct", "affirmative", "okey",
+            "perfect", "great", "cool", "accept", "microwavable", "precisely", "available", "acceptable"],
 
     'pst_1': ["you are right", "just so", "still available", "yes, it is", "ok thats great", "perfect, thanks",
             "whats offer", "thank you for contact me", "cool", "why not", "if its free", "accept", "whats the offer",
@@ -62,14 +62,21 @@ cities = ['London', 'Birmingham', 'Leeds', 'Glasgow', 'Sheffield', 'Bradford', '
           'Cheltenham', 'Bassetlaw', 'Scottish Borders']
 
 
-part_of_cities = ['Lancashire', 'Bracknell', 'Hampshire', 'Dunbartonshire', 'Kingston', 'Hull', 'Riding',
-                  'Stratford', 'White Horse', 'Crewe', 'Nantwich', 'Amber', 'Havant', 'Nuneaton', 'Bedworth', 'Suffolk',
-                  'Reigate', 'Glamorgan', 'Kesteven', 'Newcastle', 'Wrexham', 'Maelor', 'Devon', 'Lindsey', 'Galloway',
-                  'Wight', 'Cambridgeshire', 'Albans', 'Lynn and Norfolk', 'Perth', 'Kinross', 'Sussex', 'Windsor',
-                  'Redcar', 'Cleveland', 'Neath Port', 'Talbot', 'Wrekin', 'Rochester', 'Medway', 'Dumfries',
-                  'Basingstoke', 'Deane', 'Lothian', 'Aylesbury', 'Southend', 'Stockton', 'Helens', 'Milton', 'Keynes',
-                  'Gloucestershire', 'Stoke', 'Maidenhead', 'Oxfordshire', 'Trent']
-
-# for i in cities:
-#     if 'Trent' in i:
-#         print(i)
+part_of_cities = {'West Lancashire': 'Lancashire', 'Bracknell Forest': 'Bracknell', 'East Hampshire': 'Hampshire',
+                  'East Dunbartonshire': 'Dunbartonshire', 'Kingston upon Hull': 'Kingston', 'East Riding': 'Riding',
+                  'Stratford on Avon': 'Stratford', 'Crewe and Nantwich': 'Crewe', 'crewe and Nantwich':'Nantwich',
+                  'Amber Valley': 'Amber', 'Havant and Waterloo': 'Havant', 'Nuneaton and Bedworth': 'Nuneaton',
+                  'nuneaton and Bedworth': 'Bedworth', 'Suffolk Coastal': 'Suffolk', 'reigate and Banstead': 'Banstead',
+                  'Reigate and Banstead': 'Reigate', 'Vale of Glamorgan': 'Glamorgan', 'South Kesteven': 'Kesteven',
+                  'Newcastle upon Tyne': 'Newcastle', 'Wrexham Maelor': 'Wrexham', 'wrexham Maelor': 'Maelor',
+                  'East Devon': 'Devon', 'East Lindsey': 'Lindsey', 'Dumfries and Galloway': 'Galloway',
+                  'Isle of Wight': 'Wight', 'South Cambridgeshire': 'Cambridgeshire', 'St Albans': 'Albans',
+                  'Kings Lynn and West Norfolk': 'Lynn', 'Kings Lynn & West Norfolk': 'Norfolk', 'Mid Sussex':'Sussex',
+                  'Perth and Kinross': 'Perth', 'Perth & Kinross': 'Kinross', 'Windsor and Maidenhead': 'Windsor',
+                  'Redcar and Cleveland': 'Redcar', 'Redcar & Cleveland': 'Cleveland', 'Neath Port Talbot': 'Talbot',
+                  'The Wrekin': 'Wrekin', 'Rochester upon Medway': 'Rochester', 'Rochester up. Medway': 'Medway',
+                  'Dumfries & Galloway': 'Dumfries', 'Basingstoke and Deane': 'Basingstoke', 'St Helens': 'Helens',
+                  'Basingstoke & Deane': 'Deane', 'West Lothian': 'Lothian', 'Aylesbury Vale': 'Aylesbury',
+                  'Southend on Sea': 'Southend', 'Stockton on Tees': 'Stockton', 'Milton Keynes': 'Milton',
+                  'milton keynes': 'Keynes', 'South Gloucestershire': 'Gloucestershire', 'Stoke on Trent': 'Stoke',
+                  'Windsor & Maidenhead': 'Maidenhead', 'South Oxfordshire': 'Oxfordshire', 'Stoke Trent': 'Trent'}

@@ -1,12 +1,14 @@
 lower_limit = 8
 upper_limit = 20
 recall_step = 1
-sleep_min = 1
+sleep_min = 3
 timeout = 3
 
-
+account_sid = 'ACf619e2ec98b61829ae5bf61ee745c29a'
+auth_token = '225f34810027794296c7bdfc5003fba5'
+twilio_number = '+16267689921'
 phone_for_test = '+380669631139'
-main_url = 'http://0b5969fd.ngrok.io/'
+main_url = 'http://52a89e1f.ngrok.io/'
 recive_url = main_url + 'receiver'
 
 

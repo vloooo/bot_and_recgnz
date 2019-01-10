@@ -85,9 +85,9 @@ def find_city(client_speech, phone):
             return True
 
     client_speech = client_speech.split(' ')
-    for i in ents.part_of_cities:
-        if i.lower() in client_speech:
-            out['city'][out['phone'] == phone] = i
+    for key, value in ents.part_of_cities.items():
+        if value.lower() in client_speech:
+            out['city'][out['phone'] == phone] = key
             return True
 
     return False
@@ -209,7 +209,7 @@ def check_for_pos_neg(text, phone):
     global out
     out['pst'][out.phone == phone], out['ngt'][out.phone == phone] = (False, False)
     text = text.lower()
-    # print(text)
+    print(text)
 
     # проверка присутствует ли в фразе одобрение или отрицание
     find_entyties(text=text, case='pst', phone=phone)
@@ -447,7 +447,7 @@ def question3():
             set_repeat_qwe(phone=phone, key=False)
 
         else:
-            text = 'could you repeat ' + out['reg_num'][out['phone'] == phone] + ' is your number?'
+            text = 'could you repeat ' + str(out['reg_num'][out['phone'] == phone].values[0]) + ' is your number?'
             set_repeat_qwe(phone=phone, key=True)
         twiml_xml = collect_2gathers_response(text=text, hints='', phone=phone, add_step=False)
 
@@ -468,7 +468,6 @@ def question4():
 
     # при одобрении задаётся следующий вопрос
     if pos:
-        out['mileage'][out.phone == phone] = phone
         twiml_xml = collect_2gathers_response(text='Can I just confirm you live in ' +
                                                    str(out['city'][out.phone == phone].values[0]) + '?',
                                               phone=phone, hints='')
@@ -483,7 +482,7 @@ def question4():
             set_repeat_qwe(phone=phone, key=False)
 
         else:
-            text = 'could you repeat ' + out['mileage'][out['phone'] == phone] + ' is your mileage?'
+            text = 'could you repeat ' + str(out['mileage'][out['phone'] == phone].values[0]) + ' is your mileage?'
             set_repeat_qwe(phone=phone, key=True)
         twiml_xml = collect_2gathers_response(text=text, hints='', phone=phone, add_step=False)
 
@@ -656,7 +655,7 @@ def question6_1():
     return str(twiml_xml)
 
 
-@app.route('/question7')
+@app.route('/question7', methods=['POST'])
 def question7():
     """
     обрабатывается вопрос: какая у вас сервисная история?
@@ -690,7 +689,6 @@ def question7():
     if found:
         twiml_xml = collect_2gathers_response(text=phrases.seventh_stage, hints='', phone=phone)
         set_convrs_key(phone, 3)
-        send_inf(phone=phone)
 
     # иначе вопрос задаётся повторно
     else:
@@ -739,6 +737,7 @@ def question8():
 
     else:
         twiml_xml = collect_end_conversation(phrases.u_can_vld_it)
+    send_inf(phone=phone)
 
     return str(twiml_xml)  # twiML в конце перевожу в строку, потому что так было в примерчике
 
@@ -808,7 +807,6 @@ def call_auto():
 
     while True:
         if config.lower_limit <= datetime.utcnow().hour < config.upper_limit:
-            print('ddd')
             make_calls()
             time.sleep(config.sleep_min * 60)
         else:
@@ -824,7 +822,6 @@ def make_calls():
     """
     совершает звонок, если имеются подходящие записи
     """
-    print('ggg')
     global quiq_recall_phones, exel_updated
     num_recalls = quiq_recalls()
     num_calls = np.max([config.num_calls_per_time - num_recalls, 2])
@@ -839,36 +836,40 @@ def make_calls():
     candidates_to_call = pd.concat([fltrd_for_call, fltrd_for_recall])
 
     if len(candidates_to_call):
+        print('ggg')
 
-        if len(fltrd_for_call) >= int(round(num_calls / 100 * (100 - config.percent_of_new))):
+        if len(fltrd_for_call) >= int(round(num_calls / 100 * config.percent_of_new)):
             number_of_client = int(round(num_calls / 100 * (100 - config.percent_of_new)))
         else:
             number_of_client = int(round(num_calls / 100 * (100 - len(fltrd_for_call) * 100 / num_calls)))
-
         for i in range(1, -1, -1):
             phone_num_list = candidates_to_call[out.cnvrs_key == i]['phone'].values
             shuffle(phone_num_list)
+            # print(phone_num_list, 'ppp', number_of_client, i)
+            phone_num_list = phone_num_list[:number_of_client]
+            number_of_client = len(phone_num_list)
+            # print(phone_num_list, 'lll', number_of_client, i)
 
-            if len(phone_num_list):
-                phone_num_list = phone_num_list[:number_of_client]
-                number_of_client = len(phone_num_list)
-                for phone in phone_num_list:
+            for phone in phone_num_list:
 
-                    quiq_recall_phones.append(phone)
-                    set_num_calls(phone)
-                    set_call_day(phone)
+                quiq_recall_phones.append(phone)
+                set_num_calls(phone)
+                set_call_day(phone)
 
-                    if i == 1:
-                        set_first_qwe(phone=phone, key=True)
-                        twiml_xml = collect_redirect_speech(phone=phone)
-                    else:
-                        set_first_qwe(phone=phone, key=False)
-                        twiml_xml = collect_2gathers_response(text=phrases.greeting, phone=phone, add_step=False, hints='')
+                if i == 1:
+                    set_first_qwe(phone=phone, key=True)
+                    twiml_xml = collect_redirect_speech(phone=phone)
+                else:
+                    set_first_qwe(phone=phone, key=False)
+                    twiml_xml = collect_2gathers_response(text=phrases.greeting, phone=phone, add_step=False, hints='')
 
-                    initiate_call(twiml=twiml_xml, phone=phone)
-                number_of_client = config.num_calls_per_time - number_of_client - num_calls
-            else:
-                number_of_client = config.num_calls_per_time - num_calls
+                initiate_call(twiml=twiml_xml, phone=phone)
+            # print(config.num_calls_per_time, number_of_client, num_calls, number_of_client, 'eee')
+            number_of_client = num_calls - number_of_client
+            # print(config.num_calls_per_time, number_of_client, num_calls, number_of_client, 'kkk')
+
+            # else:
+            #     number_of_client = config.num_calls_per_time - num_calls
     else:
         if exel_updated:
             exel_updated = False

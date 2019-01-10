@@ -43,8 +43,11 @@ start_url = config.start_url
 ngrok_url = config.ngrok_url
 app = Flask(__name__)  # работа с вебом
 
+exel_updated = False
+exel_doc_counter = 0
+
 out = pd.DataFrame(
-    {"reg_num": [''], "mileage": [10000], "city": [''], "phone": [''], "phone_for_offer": [''], 'number_of_calls': [9],
+    {"reg_num": [''], "mileage": [10000], "city": [''], "phone": [''], "phone_for_offer": [''], 'num_calls': [9],
      "serv_hist": [''], 'again_key': [True], 'stage': [1], 'pst': [True], 'ngt': [True], 'cnvrs_key': [3],
      'first_ques': [False], 'call_day': [0], 'accept': [None], 'img_url': [''], 'repeat_qwe': [True]})
 
@@ -131,8 +134,7 @@ def collect_redirect_speech(phone):
     global out
     response = VoiceResponse()
 
-    response.say('Hi, I am phoning you again to talk about your car. Last time we stoped on ' +
-                 subjects[out['stage'][out.phone == phone].values[0] - 2])
+    response.say(phrases.phone_again + subjects[out['stage'][out.phone == phone].values[0] - 2])
 
     response.redirect(ngrok_url + str(out['stage'][out.phone == phone].values[0] - 1))
     out['stage'][out.phone == phone] = out['stage'][out.phone == phone].values[0] - 1
@@ -207,7 +209,7 @@ def check_for_pos_neg(text, phone):
     global out
     out['pst'][out.phone == phone], out['ngt'][out.phone == phone] = (False, False)
     text = text.lower()
-    print(text)
+    # print(text)
 
     # проверка присутствует ли в фразе одобрение или отрицание
     find_entyties(text=text, case='pst', phone=phone)
@@ -218,11 +220,19 @@ def find_entyties(text, case, phone):
     """
 
     """
-    for i in ents.ents[case]:
-        if out[case][out.phone == phone].values[0]:
-            break
+    translation = {ord(x): None for x in string.punctuation}
+    text = text.translate(translation).lower()
+
+    for i in ents.ents[case + '_1']:
         if i in text:
             out[case][out.phone == phone] = True
+            break
+
+    text = text.split(' ')
+    for i in ents.ents[case]:
+        if i in text:
+            out[case][out.phone == phone] = True
+            break
 
 
 def get_pos_neg(client_speech, phone):
@@ -348,9 +358,9 @@ def set_convrs_key(phone, key):
     out['cnvrs_key'][out.phone == phone] = key
 
 
-def set_number_of_calls(phone):
+def set_num_calls(phone):
     global out
-    out['number_of_calls'][out.phone == phone] += 1
+    out['num_calls'][out.phone == phone] += 1
 
 
 def set_repeat_qwe(phone, key):
@@ -374,7 +384,7 @@ def set_urls(urlo):
 
 #                                                   question part
 ######################################################################################################################
-@app.route('/question1', methods=['GET', 'POST'])  # работа с вебом
+@app.route('/question1', methods=['POST'])  # работа с вебом
 def question1():
     """
     обрабатывается вопрос: вы всё ещё продаёте машину?
@@ -389,7 +399,7 @@ def question1():
                                repeat_hint='')
 
 
-@app.route('/question2', methods=['GET', 'POST'])  # работа с вебом
+@app.route('/question2', methods=['POST'])  # работа с вебом
 def question2():
     """
     обрабатывается вопрос: интересно ли клиенту предложение.
@@ -407,7 +417,7 @@ def question2():
                                positive_hint='', phone=phone, end_call=True, repeat_hint='')
 
 
-@app.route('/question3', methods=['GET', 'POST'])  # работа с вебом
+@app.route('/question3', methods=['POST'])  # работа с вебом
 def question3():
     """
     обрабатывается вопрос: это ваш регестрационный номер. / правильно ли я понял ваш номер?
@@ -444,7 +454,7 @@ def question3():
     return str(twiml_xml)
 
 
-@app.route('/question4', methods=['GET', 'POST'])  # работа с вебом
+@app.route('/question4', methods=['POST'])  # работа с вебом
 def question4():
     """
     обрабатывается вопрос: это ваш пробег. / правильно ли я понял ваш пробег?
@@ -480,7 +490,7 @@ def question4():
     return str(twiml_xml)
 
 
-@app.route('/question4_1', methods=['GET', 'POST'])  # работа с вебом
+@app.route('/question4_1', methods=['POST'])  # работа с вебом
 def question4_1():
     """
     обрабатывается вопрос:  могу я уточнить ваш пробег
@@ -504,7 +514,7 @@ def question4_1():
     return str(twiml_xml)
 
 
-@app.route('/question5', methods=['GET', 'POST'])  # работа с вебом
+@app.route('/question5', methods=['POST'])  # работа с вебом
 def question5():
     """
     обрабатывается вопрос: вы живёте в этом городе? / правильно ли я понял вы живёте в?
@@ -537,7 +547,7 @@ def question5():
     return str(twiml_xml)
 
 
-@app.route('/question5_1', methods=['GET', 'POST'])
+@app.route('/question5_1', methods=['POST'])
 def question5_1():
     """
     обрабатывается вопрос:  могу я уточнить ближайший город?
@@ -587,7 +597,7 @@ def question5_1():
     return str(twiml_xml)
 
 
-@app.route('/question6', methods=['GET', 'POST'])
+@app.route('/question6', methods=['POST'])
 def question6():
     """
     обрабатывается вопрос: это ваш мобильный?
@@ -621,7 +631,7 @@ def question6():
     return str(twiml_xml)
 
 
-@app.route('/question6_1', methods=['GET', 'POST'])  # работа с вебом
+@app.route('/question6_1', methods=['POST'])  # работа с вебом
 def question6_1():
     """
     обрабатывается вопрос: введите мобильный с помощью клавиатуры.
@@ -696,7 +706,7 @@ def question7():
     return str(twiml_xml)
 
 
-@app.route('/question8', methods=['GET', 'POST'])
+@app.route('/question8', methods=['POST'])
 def question8():
     """
      обрабатывается вопрос: вы примите оффер?
@@ -748,13 +758,13 @@ def del_person():
     unsend_inf = config.unwanted_inf
     not_lack_call = out[out['cnvrs_key'] > 1].drop(unsend_inf, axis=1)
     out = out.drop(out[out['cnvrs_key'] > 1].index)
-    too_many_calls = out[out['number_of_calls'] >= config.finaly_number_of_calls].drop(unsend_inf, axis=1)
-    out = out.drop(out[out['number_of_calls'] >= config.finaly_number_of_calls].index)
+    too_many_calls = out[out['num_calls'] >= config.last_call].drop(unsend_inf, axis=1)
+    out = out.drop(out[out['num_calls'] >= config.last_call].index)
     hist_data = pd.concat([hist_data, not_lack_call, too_many_calls], ignore_index=True)
     hist_data.to_csv('history.csv', index=False)
 
 
-@app.route('/send', methods=['GET', 'POST'])
+@app.route('/send', methods=['POST'])
 def send_inf(phone):
     """
 
@@ -766,7 +776,7 @@ def send_inf(phone):
     requests.post(config.recive_url, json=pers)
 
 
-@app.route('/receiver', methods=['GET', 'POST'])
+@app.route('/receiver', methods=['POST'])
 def receiver():
     print(request.get_json())
 
@@ -778,7 +788,7 @@ def initiate_call(twiml, phone):
     client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=phone, from_=config.twilio_number, record=True)
 
 
-@app.route('/test_call', methods=['GET', 'POST'])
+@app.route('/test_call', methods=['POST'])
 def test_call():
     """
 
@@ -794,65 +804,83 @@ def call_auto():
     """
 
     """
+    global exel_updated
+
     while True:
         if config.lower_limit <= datetime.utcnow().hour < config.upper_limit:
+            print('ddd')
             make_calls()
             time.sleep(config.sleep_min * 60)
         else:
             del_person()
-            time.sleep(12 * 60 * 60)
+            if exel_updated:
+                exel_updated = False
+                parse_exel()
+            time.sleep(config.sleep_min * 2 * 60)
 
 
-@app.route('/make_calls', methods=['GET', 'POST'])
+@app.route('/make_calls', methods=['POST'])
 def make_calls():
     """
     совершает звонок, если имеются подходящие записи
     """
+    print('ggg')
+    global quiq_recall_phones, exel_updated
+    num_recalls = quiq_recalls()
+    num_calls = np.max([config.num_calls_per_time - num_recalls, 2])
+    today = datetime.utcnow().day
 
-    global quiq_recall_phones
-    number_of_calls = np.max([config.number_of_calls_per_time - quiq_recalls(), 2])
+    fltrd_for_recall = out[out.cnvrs_key == 1][abs(out.call_day - today) >= config.recall_step] \
+        [out.num_calls < config.last_call]
 
-    filtered_for_recall = out[out.cnvrs_key == 1][abs(out.call_day - datetime.utcnow().day) >= config.recall_step] \
-        [out.number_of_calls < config.finaly_number_of_calls]
-    filtered_for_call = out[out.cnvrs_key == 0][abs(out.call_day - datetime.utcnow().day) >= config.recall_step] \
-        [out.number_of_calls < config.finaly_number_of_calls]
+    fltrd_for_call = out[out.cnvrs_key == 0][abs(out.call_day - today) >= config.recall_step] \
+        [out.num_calls < config.last_call]
 
-    candidates_to_call = pd.concat([filtered_for_call, filtered_for_recall])
+    candidates_to_call = pd.concat([fltrd_for_call, fltrd_for_recall])
+
     if len(candidates_to_call):
-        number_of_client = int(round(number_of_calls / 100 * (100 - config.percent_of_new)))
+
+        if len(fltrd_for_call) >= int(round(num_calls / 100 * (100 - config.percent_of_new))):
+            number_of_client = int(round(num_calls / 100 * (100 - config.percent_of_new)))
+        else:
+            number_of_client = int(round(num_calls / 100 * (100 - len(fltrd_for_call) * 100 / num_calls)))
 
         for i in range(1, -1, -1):
-
             phone_num_list = candidates_to_call[out.cnvrs_key == i]['phone'].values
             shuffle(phone_num_list)
+
             if len(phone_num_list):
-                phone_num_list = phone_num_list[:np.min([number_of_client, len(phone_num_list)])]
+                phone_num_list = phone_num_list[:number_of_client]
                 number_of_client = len(phone_num_list)
                 for phone in phone_num_list:
 
                     quiq_recall_phones.append(phone)
-                    set_number_of_calls(phone)
+                    set_num_calls(phone)
                     set_call_day(phone)
+
                     if i == 1:
                         set_first_qwe(phone=phone, key=True)
                         twiml_xml = collect_redirect_speech(phone=phone)
                     else:
                         set_first_qwe(phone=phone, key=False)
+                        twiml_xml = collect_2gathers_response(text=phrases.greeting, phone=phone, add_step=False, hints='')
 
-                        twiml_xml = collect_2gathers_response(text=phrases.greeting,
-                                                              hints='', phone=phone, add_step=False)
                     initiate_call(twiml=twiml_xml, phone=phone)
-                number_of_client = config.number_of_calls_per_time - number_of_client
+                number_of_client = config.num_calls_per_time - number_of_client - num_calls
             else:
-                number_of_client = config.number_of_calls_per_time
+                number_of_client = config.num_calls_per_time - num_calls
+    else:
+        if exel_updated:
+            exel_updated = False
+            parse_exel()
 
 
 def quiq_recalls():
     global quiq_recall_phones
-    number_of_calls = 0
+    num_calls = 0
 
     for phone in quiq_recall_phones:
-        set_number_of_calls(phone)
+        set_num_calls(phone)
         set_call_day(phone)
         if out['cnvrs_key'][out.phone == phone].values[0] == 1 or out['cnvrs_key'][out.phone == phone].values[0] == 0:
             if out['cnvrs_key'][out.phone == phone].values[0] == 1:
@@ -863,66 +891,32 @@ def quiq_recalls():
                 twiml_xml = collect_2gathers_response(text=phrases.greeting,
                                                       hints='', phone=phone, add_step=False)
             initiate_call(twiml=twiml_xml, phone=phone)
-            number_of_calls += 1
+            num_calls += 1
     quiq_recall_phones.clear()
-    return number_of_calls
+    return num_calls
 
 
 ######################################################################################################################
-
-
-@app.route('/add_person', methods=['GET', 'POST'])
-def add_person():
-    """
-
-    """
-    global out
-    if request.method == "POST":
-        json = request.get_json()
-        dt = pd.DataFrame.from_dict(json)
-        out = pd.concat([out, dt], ignore_index=True)
-
-    return " "
-
-
-@app.route('/snd', methods=['POST', 'GET'])
+@app.route('/snd', methods=['POST'])
 def snd():
     pers = {'img_url': 'http://www.letchworthmini.co.uk/s/cc_images/cache_71011477.JPG', 'phone': '+9379992'}
     requests.post(config.main_url + 'extract_num', json=pers)
 
 
-@app.route('/extract_num', methods=['POST', 'GET'])
+@app.route('/extract_num', methods=['POST'])
 def extract_num():
-    global out
+    global out, exel_updated, exel_doc_counter
 
     try:
         xls = pd.ExcelFile(request.files['pic'])
         df = xls.parse(xls.sheet_names[0], converters={"phone": str})
 
-        req = df.to_dict()
-        req['reg_num'] = {}
-
-        with graph.as_default():
-            for j in range(len(req['phone'])):
-                req['reg_num'][j] = Main.main(req['img_url'][j])
-
-        for i in range(len(config.adding_filds)):
-            if i < 3:
-                req = add_field_to_dict(0, i, req)
-
-            elif i < 8:
-                req = add_field_to_dict(False, i, req)
-
-            elif i == 8:
-                req = add_field_to_dict(1, i, req)
-
-            else:
-                req = add_field_to_dict(None, i, req)
-
-        requests.post(config.add_pers_url, json=req)
-        writer = pd.ExcelWriter('tmp.xlsx')
+        writer = pd.ExcelWriter(str(exel_doc_counter) + '.xlsx')
         df.to_excel(writer, 'Sheet1')
         writer.save()
+        exel_doc_counter += 1
+
+        exel_updated = True
         return "SUCCESS"
 
     except:
@@ -949,6 +943,39 @@ def extract_num():
         out = pd.concat([out, dt], ignore_index=True)
 
         return "SUCCESS"
+
+
+def parse_exel():
+    global out, exel_doc_counter
+    for i in range(exel_doc_counter):
+        xls = pd.ExcelFile(str(i) + '.xlsx')
+        df = xls.parse(xls.sheet_names[0], converters={"phone": str})
+
+        req = df.to_dict()
+        req['reg_num'] = {}
+
+        with graph.as_default():
+            for j in range(len(req['phone'])):
+                req['reg_num'][j] = Main.main(req['img_url'][j])
+
+        for i in range(len(config.adding_filds)):
+            if i < 3:
+                req = add_field_to_dict(0, i, req)
+
+            elif i < 8:
+                req = add_field_to_dict(False, i, req)
+
+            elif i == 8:
+                req = add_field_to_dict(1, i, req)
+
+            else:
+                req = add_field_to_dict(None, i, req)
+
+        df = pd.DataFrame.from_dict(req)
+        out = pd.concat([out, df], ignore_index=True)
+    exel_doc_counter = 0
+
+    # requests.post(config.add_pers_url, json=req)
 
 
 def add_field_to_dict(value, pos_field, req):

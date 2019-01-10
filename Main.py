@@ -10,10 +10,10 @@ import Preprocess
 def main(image_url):
 
     # # loading image
-    # resp = urllib.request.urlopen(image_url)
-    # image_url = np.asarray(bytearray(resp.read()), dtype="uint8")
-    # imgOriginalScene = cv2.imdecode(image_url, cv2.IMREAD_COLOR)
-    imgOriginalScene = cv2.imread(image_url)
+    resp = urllib.request.urlopen(image_url)
+    image_url = np.asarray(bytearray(resp.read()), dtype="uint8")
+    imgOriginalScene = cv2.imdecode(image_url, cv2.IMREAD_COLOR)
+    # imgOriginalScene = cv2.imread(image_url)
 
     # croping useful area and resizing
     h, w = imgOriginalScene.shape[:2]

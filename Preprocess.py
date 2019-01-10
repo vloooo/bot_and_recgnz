@@ -42,8 +42,8 @@ def preprocess_for_plate(img_orig):
     list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
     if nmbr_of_chrs >= 2:
         img_thresh = separate_stick(img_thresh, list_of_psb_chr, none_chars)
-    cv2.imshow('hoffffffffffffffh', img_thresh)
-    cv2.waitKey(0)
+    # cv2.imshow('hoffffffffffffffh', img_thresh)
+    # cv2.waitKey(0)
     _, _, none_chars = DetectChars.find_psbl_chr(img_thresh, [100, 4, 15, 0.15, 1])
     img_thresh = matching_broken_chars(img_thresh, none_chars)
 
@@ -67,8 +67,8 @@ def preprocess_for_plate(img_orig):
         _, img_thresh[i.pos_y - 1:y1, x1: i.pos_x + i.width + 2] = \
             cv2.threshold(roi[i.pos_y - 1:y1, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    cv2.imshow('hoh', img_thresh)
-    cv2.waitKey(0)
+    # cv2.imshow('hoh', img_thresh)
+    # cv2.waitKey(0)
     list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
     if nmbr_of_chrs > 0:
         img_thresh = rotate(img_thresh, list_of_psb_chr)

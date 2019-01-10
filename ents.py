@@ -1,18 +1,21 @@
 import phrases
 
 ents = {
-    'pst': ["yes", "yeah", "exactly", "you are right", "just so", "ok", "yeh", "yep", "correct", "affirmative",
-            "perfect", "still available", "yes, it is", "ok that's great", "perfect, thanks",
-            "thank you for contact me",
-            "whats the offer", "thanks for the offer", "cool", "yes please", "why not", "if its free", "accept",
-            "precisely", "you may well say so", "available"],
+    'pst': ["yes", "yeah", "exactly", "ok", "yeh", "yep", "correct", "affirmative", "okey"
+            "perfect", "great", "cool", "accept", "microwavable", "precisely", "available"],
 
-    'ngt': ["sorry it's sold", "no way", "sorry, sold", "it's gone", "sold it", "sold it last week",
-            "sold it", "sold", "i don't have a car for sale", "you have missed it", "no",
-            "no thanks", "not for me", "i don't think so", "fuck off", "piss off", "that's not my",
-            "i don't own", "that's not correct", "that's not", 'is wrong', "i live in",
-            "where did you get", "why do you need to know that?", "my mobile is",
-            "don't know", "what is service history", 'i have lost', "not interested", "don't", 'changed my mind']
+    'pst_1': ["you are right", "just so", "still available", "yes, it is", "ok thats great", "perfect, thanks",
+            "whats offer", "thank you for contact me", "cool", "why not", "if its free", "accept", "whats the offer",
+            "thanks for the offer", "you may well say so", "go ahead"],
+
+    'ngt': ["sold", "no", "didnt" "not", "nope", "dont", "salt"],
+
+    'ngt_1': ["its sold", "no way", "sorry, sold", "its gone", "it sold"
+            "sold it", "i dont have a car for sale", "you have missed it",
+            "no thanks", "not for me", "i dont think so", "fuck off", "piss off", "thats not my",
+            "i dont own", "thats not correct", "thats not", "is wrong", "i live in", "where did you get",
+            "why do you need to know that?", "my mobile is", "dont know", "what is service history",
+            "i have lost", "not interested", "changed my mind"]
 }
 
 subjects = ['my greeting', 'registration number of your car', ' mileage of your car', 'the nearest city to you',
@@ -36,7 +39,7 @@ cities = ['London', 'Birmingham', 'Leeds', 'Glasgow', 'Sheffield', 'Bradford', '
           'Plymouth', 'Rotherham', 'Stoke on Trent', 'Wolverhampton', 'Rhondda', 'Cynon', 'Taff', 'Oldham', 'Derby',
           'South Gloucestershire', 'Swansea', 'Salford', 'Aberdeenshire', 'Barnsley', 'Tameside', 'Trafford', 'York',
           'Aberdeen', 'Southampton', 'Highland', 'Rochdale', 'Solihull', 'Gateshead', 'Milton Keynes', 'North Tyneside',
-          'Calderdale', 'Northampton', 'Portsmouth', 'Warrington', 'North Somerset', 'Bury', 'Luton', 'St Helens',
+          'Calderdale', 'Northampton', 'Portsmouth', 'Warrington', 'North Somerset', 'Bury', 'Luton', 'Suffolk Coastal',
           'Stockton on Tees', 'Renfrewshire', 'Thamesdown', 'Southend on Sea', 'New Forest', 'Caerphilly', 'Wycombe',
           'Carmarthenshire', 'Bath and North East Somerset', 'Basildon', 'Bournemouth', 'Peterborough', 'Colchester',
           'North East Lincolnshire', 'Chelmsford', 'Brighton', 'South Tyneside', 'Charnwood', 'Aylesbury Vale', 'Swale',
@@ -45,12 +48,11 @@ cities = ['London', 'Birmingham', 'Leeds', 'Glasgow', 'Sheffield', 'Bradford', '
           'Flintshire', 'Rochester upon Medway', 'The Wrekin', 'Falkirk', 'Reading', 'Wokingham', 'North Ayrshire',
           'Windsor and Maidenhead', 'Maidstone', 'Redcar and Cleveland', 'Blackburn', 'Neath Port Talbot', 'Poole',
           'Wealden', 'Bedford', 'Lancaster', 'Newport', 'Canterbury', 'Preston', 'Dacorum', 'Cherwell', 'Mid Sussex',
-          'Perth and Kinross', 'Thurrock', 'Tendring', 'Kings Lynn and West Norfolk', 'St Albans', 'Bridgend',
-          'Elmbridge',
-          'South Cambridgeshire', 'Braintree', 'Norwich', 'Thanet', 'Isle of Wight', 'South Oxfordshire', 'Guildford',
-          'Stafford', 'Powys', 'East Hertfordshire', 'Torbay', 'Wrexham Maelor', 'East Devon', 'East Lindsey', 'Halton',
-          'Warwick', 'East Ayrshire', 'Newcastle under Lyme', 'North Wiltshire', 'South Kesteven', 'Epping Forest',
-          'Vale of Glamorgan', 'Reigate and Banstead', 'Chester', 'Mid Bedfordshire', 'Suffolk Coastal', 'Horsham',
+          'Perth and Kinross', 'Thurrock', 'Tendring', 'Kings Lynn and West Norfolk', 'St Albans', 'Bridgend', 'Halton',
+          'Elmbridge','South Cambridgeshire', 'Braintree', 'Norwich', 'Thanet', 'Isle of Wight', 'South Oxfordshire',
+          'Guildford','Stafford', 'Powys', 'East Hertfordshire', 'Torbay', 'Wrexham Maelor', 'East Devon', 'Horsham',
+          'East Lindsey', 'Warwick', 'East Ayrshire', 'Newcastle under Lyme', 'North Wiltshire', 'South Kesteven',
+          'Epping Forest', 'Vale of Glamorgan', 'Reigate and Banstead', 'Chester', 'Mid Bedfordshire',  'St Helens',
           'Nuneaton and Bedworth', 'Gwynedd', 'Havant and Waterloo', 'Teignbridge', 'Cambridge', 'Vale Royal', 'Oxford',
           'Amber Valley', 'North Hertfordshire', 'South Ayrshire', 'Waverley', 'Broadland', 'Crewe and Nantwich',
           'Breckland', 'Ipswich', 'Pembrokeshire', 'Vale of White Horse', 'Salisbury', 'Gedling', 'Eastleigh', 'Conway',
@@ -59,7 +61,6 @@ cities = ['London', 'Birmingham', 'Leeds', 'Glasgow', 'Sheffield', 'Bradford', '
           'Scarborough', 'Stroud', 'Wychavon', 'Waveney', 'Exeter', 'Dover', 'Test Valley', 'Gloucester', 'Erewash',
           'Cheltenham', 'Bassetlaw', 'Scottish Borders']
 
-### Bedfordshire Wiltshire Hertfordshire Ayrshire Somerset Lincolnshire Tyneside Lanarkshir
 
 part_of_cities = ['Lancashire', 'Bracknell', 'Hampshire', 'Dunbartonshire', 'Kingston', 'Hull', 'Riding',
                   'Stratford', 'White Horse', 'Crewe', 'Nantwich', 'Amber', 'Havant', 'Nuneaton', 'Bedworth', 'Suffolk',

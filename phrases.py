@@ -13,6 +13,8 @@ keybrd_inp_ml = 'Use the keyboard to enter the milleage of your car.'
 
 bye = 'Take care and goodbye for now.'
 
+phone_again = 'Hi, I am phoning you again to talk about your car. Last time we stoped on '
+
 u_can_vld_it = '''OK no worries if any of you say was incorect. You can validate it on site.
                 Take care and goodbye for now.'''
 

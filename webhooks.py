@@ -741,7 +741,7 @@ def make_calls():
     """
 
     filtered_for_recall = out[out.cnvrs_key == 1][abs(out.call_hour - datetime.utcnow().hour) > config.recall_step] \
-        [out.number_of_calls < config.finaly_number_of_calls]
+        [out.number_of_calls < config.last_call]
     candidates_to_call = pd.concat([out[out.cnvrs_key == 0], filtered_for_recall])
 
     if len(candidates_to_call):

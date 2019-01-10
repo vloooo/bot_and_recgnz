@@ -27,8 +27,8 @@ def detect_plates_in_scene(img_originl):
         contours.append(possibleChar.contour)
 
     cv2.drawContours(imgContours, contours, -1, 255)
-    cv2.imshow('PosP', imgContours)
-    cv2.waitKey(0)
+    # cv2.imshow('PosP', imgContours)
+    # cv2.waitKey(0)
 
     all_matched_chars = DetectChars.find_all_cmbn_mtchng_chars(psb_chars, img_gray, [6., 12., .5, 1, .3])
 

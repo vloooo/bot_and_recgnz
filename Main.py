@@ -10,16 +10,16 @@ import Preprocess
 def main(image_url):
 
     # # loading image
-    resp = urllib.request.urlopen(image_url)
-    image_url = np.asarray(bytearray(resp.read()), dtype="uint8")
-    imgOriginalScene = cv2.imdecode(image_url, cv2.IMREAD_COLOR)
-    # imgOriginalScene = cv2.imread(image_url)
+    # resp = urllib.request.urlopen(image_url)
+    # image_url = np.asarray(bytearray(resp.read()), dtype="uint8")
+    # imgOriginalScene = cv2.imdecode(image_url, cv2.IMREAD_COLOR)
+    imgOriginalScene = cv2.imread(image_url)
 
     # croping useful area and resizing
     h, w = imgOriginalScene.shape[:2]
-    crop_img = imgOriginalScene[int(h / 100 *40): h - 20, 40: w - 40]
+    crop_img = imgOriginalScene[int(h / 100 *30): h - 20, 40: w - 40]
 
-    imgOriginalScene = imgOriginalScene[int(h / 100 *40): h - 20, 40: w - 40]
+    imgOriginalScene = imgOriginalScene[int(h / 100 *35): h - 20, 40: w - 40]
     imgOriginalScene = cv2.resize(imgOriginalScene, (0, 0), fx=1.4, fy=1.4, interpolation=cv2.INTER_CUBIC)
 
     if imgOriginalScene is None:
@@ -162,13 +162,15 @@ def explore_btms(list_of_psb_chars, dif_list):
 if __name__ == "__main__":
 
 
-    dirnrm = '/home/user/PycharmProjects/plates/cars/new/norm'
-    dirnrmN = '/home/user/PycharmProjects/plates/cars/new/neW'
-    names = os.listdir(dirnrm)
+    dirnrm = '/home/user/PycharmProjects/plates/cars/forTest'
+    dirnrmM = '/home/user/PycharmProjects/plates/cars/new/norm'
+
+    dirnrmN = '/home/user/PycharmProjects/plates/cars/new/neW' #  NL52SYZ)
+    names = os.listdir(dirnrmN)
     counter = 0
-    # names = ['KJ03SXN).jpg']
+    # names = ['WN08WDP.jpg']
     for i in names:
-        c = main(dirnrm + '/' + i)
+        c = main(dirnrmN + '/' + i)
         print(i[:-4],'         ', c)
 
         if i.find(c) != -1:

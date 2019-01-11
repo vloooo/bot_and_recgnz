@@ -1,3 +1,5 @@
+import copy
+
 import cv2
 import math
 import Preprocess
@@ -14,23 +16,27 @@ def detect_plates_in_scene(img_originl):
 
     img_gray, img_thresh_scene = Preprocess.preprocess_for_scene(img_originl)
 
+    # img_thresh_scene = cv2.GaussianBlur(img_thresh_scene, (1, 3), 0)
     psb_chars = find_vld_chrs_by_cascad(img_thresh_scene, img_gray)
+    # cv2.imshow('lldfasfa', img_thresh_scene)
+    # cv2.waitKey(0)
 
-
-    height, width, numChannels = img_originl.shape
-
-    imgContours = np.zeros((height, width, 3), np.uint8)
-
-    contours = []
-
-    for possibleChar in psb_chars:
-        contours.append(possibleChar.contour)
-
-    cv2.drawContours(imgContours, contours, -1, 255)
+    # height, width, numChannels = img_originl.shape
+    #
+    # imgContours = np.zeros((height, width, 3), np.uint8)
+    #
+    # contours = []
+    #
+    # for possibleChar in psb_chars:
+    #     contours.append(possibleChar.contour)
+    #
+    # cv2.drawContours(imgContours, contours, -1, 255)
     # cv2.imshow('PosP', imgContours)
     # cv2.waitKey(0)
 
-    all_matched_chars = DetectChars.find_all_cmbn_mtchng_chars(psb_chars, img_gray, [6., 12., .5, 1, .3])
+    all_matched_chars = DetectChars.find_all_cmbn_mtchng_chars(psb_chars, img_gray, [6., 12., 0.5, 1.2, .3]) #[6., 12., 1.2, 1.2, .3]
+
+
 
     for matched_chars in all_matched_chars:  # for each group of matching chars
         psb_plate = extract_plate(img_originl, matched_chars)  # attempt to extract plate

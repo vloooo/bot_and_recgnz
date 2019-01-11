@@ -21,7 +21,7 @@ ents = {
 subjects = ['my greeting', 'registration number of your car', ' mileage of your car', 'the nearest city to you',
             'phone number to offer', 'your car service history', 'making you offer']
 
-repeat_subj = ['your car available?', 'are you interested?', '', '', 'the nearest city to you.',
+repeat_subj = [' is your car available?', 'are you interested?', '', '', 'the nearest city to you.',
                phrases.fivth_stage, phrases.sixth_stage]
 
 serv_hist = ['1', '2', '3', 'full', 'part', 'parts', 'missing', 'lost', 'miss', 'no']

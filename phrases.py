@@ -25,8 +25,8 @@ greeting = 'Hi, I am phoning about your car, is it still available?'
 seventh_stage = ('that\'s my questions completed. In the next few minutes you will receive an offer. '
                  'This can be done in as little as two hours. I really hope you find our offer acceptable.')
 
-sixth_stage = ('Which of the following describes your car service history'
-               '1. Full service history, 2. Part service history, 3. Missing service history.')
+sixth_stage = ('Which of the following describes your car service history. '
+               '1, Full service history, 2, Part service history, 3, Missing service history.')
 
 fivth_stage = 'Will it be convenient for you to get an offer for this phone number?'
 

@@ -3,6 +3,7 @@ import numpy as np
 import math
 import DetectChars
 import copy
+import matplotlib.pyplot as plt
 
 
 def preprocess_for_scene(img_orig):
@@ -18,22 +19,26 @@ def preprocess_for_plate(img_orig):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(3, 3))
     im = clahe.apply(img_bl)
     # print(im)
-    list_of_psb_chr = prepare_to_hist_clcl(im)
+    # list_of_psb_chr = prepare_to_hist_clcl(im)
+    # cv2.imshow('hoh', im)
+    cv2.waitKey(0)
     img_thresh, img_grayscale = histogram_kray_fill(im, img_grayscale, list_of_psb_chr)
-    # cv2.imshow('hoh', img_thresh)
-    # cv2.waitKey(0)
+
     img_thresh = half_thresh(img_thresh)
 
     img_thresh = kray_fill(img_thresh)
 
-    list_of_possible_chars, number_of_chars, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
 
+    list_of_psb_chr, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    img_tmp = img_thresh.copy()
+    img_tmp = draw_top_line(list_of_psb_chr, img_tmp)
+    img_tmp = draw_btm_line(list_of_psb_chr, img_tmp)
 
+    list_of_psb_chr, number_of_chars, _ = DetectChars.find_psbl_chr(img_tmp, [70, 3, 15, 0.1, 1.5])
     if number_of_chars > 7:
-        img_thresh = replace_last_first(img_thresh, list_of_possible_chars, number_of_chars)
-        img_thresh = del_blue(img_orig, list_of_possible_chars, img_thresh)
-    # cv2.imshow('lll4', img_thresh)
-    # cv2.waitKey(0)
+        img_thresh = replace_last_first(img_thresh, list_of_psb_chr, number_of_chars)
+        img_thresh = del_blue(img_orig, list_of_psb_chr, img_thresh)
+
 
     list_of_psb_chr, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
     img_thresh = draw_top_line(list_of_psb_chr, img_thresh)
@@ -44,16 +49,30 @@ def preprocess_for_plate(img_orig):
         img_thresh = separate_stick(img_thresh, list_of_psb_chr, none_chars)
     # cv2.imshow('hoffffffffffffffh', img_thresh)
     # cv2.waitKey(0)
+
     _, _, none_chars = DetectChars.find_psbl_chr(img_thresh, [100, 4, 15, 0.15, 1])
     img_thresh = matching_broken_chars(img_thresh, none_chars)
+    # cv2.imshow('hoffffffffffffffh', img_thresh)
+    # cv2.waitKey(0)
 
-
-    list_of_psb_chr, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    list_of_psb_chr, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.7]) # [70, 3, 15, 0.1, 1.5]
     height, width = img_thresh.shape
     img_thresh = np.zeros((height, width), np.uint8)
     img_for_rcgnz = np.zeros((height, width), np.uint8)
 
 
+    height, width = img_thresh.shape
+
+    imgContours = np.zeros((height, width, 3), np.uint8)
+
+    contours = []
+
+    for possibleChar in list_of_psb_chr:
+        contours.append(possibleChar.contour)
+
+    cv2.drawContours(imgContours, contours, -1, 255)
+    # cv2.imshow('PosPdkajflaj', imgContours)
+    # cv2.waitKey(0)
 
     for i in list_of_psb_chr:
         x1 = np.max([i.pos_x - 2, 0])
@@ -67,15 +86,21 @@ def preprocess_for_plate(img_orig):
         _, img_thresh[i.pos_y - 1:y1, x1: i.pos_x + i.width + 2] = \
             cv2.threshold(roi[i.pos_y - 1:y1, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    # cv2.imshow('hoh', img_thresh)
-    # cv2.waitKey(0)
+    list_of_psb_chr, number_of_chars, _ = DetectChars.find_psbl_chr(img_tmp, [70, 3, 15, 0.1, 1.5])
+    if number_of_chars > 7:
+        img_thresh = replace_last_first(img_thresh, list_of_psb_chr, number_of_chars)
+        img_thresh = del_blue(img_orig, list_of_psb_chr, img_thresh)
+
     list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
     if nmbr_of_chrs > 0:
         img_thresh = rotate(img_thresh, list_of_psb_chr)
         img_for_rcgnz = rotate(img_for_rcgnz, list_of_psb_chr)
 
     _, img_thresh = cv2.threshold(img_thresh, 200, 255, cv2.THRESH_BINARY)
+
+
     list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+
     img_thresh = draw_top_line(list_of_psb_chr, img_thresh)
     img_thresh = draw_btm_line(list_of_psb_chr, img_thresh)
 
@@ -86,9 +111,14 @@ def preprocess_for_plate(img_orig):
     list_of_psb_chr, nmbr_of_chrs, none_chars = DetectChars.find_psbl_chr(img_thresh, [100, 4, 15, 0.15, 1])
     img_thresh = matching_broken_chars(img_thresh, none_chars)
 
+
+
+
+
     kernel = np.ones((3, 3), np.uint8)
     img_for_rcgnz = cv2.erode(img_for_rcgnz, kernel)
-
+    # cv2.imshow('ho2h', img_thresh)
+    # cv2.waitKey(0)
 
     return img_grayscale, img_thresh, img_for_rcgnz
 
@@ -176,16 +206,28 @@ def kray_fill(img_thresh, full_filling=False, full_left_right=True):
 
 def draw_top_line(list_of_psb_chr, img_thresh):
     if len(list_of_psb_chr):
+        selected_tps = []
         tops = [x.pos_y for x in list_of_psb_chr]
-        btm_clear_line = np.max([int(np.mean(tops)), 0])
-        img_thresh[btm_clear_line, :] = 0
+        for i in range(len(tops) - 1):
+            if abs(tops[i] - tops[i+1]) < img_thresh.shape[0] / 100 * 30:
+                selected_tps.append(tops[i])
+        if len(selected_tps):
+            btm_clear_line = np.max([int(np.mean(selected_tps)), 0])
+            img_thresh[btm_clear_line, :] = 0
+        if len(selected_tps) == 0:
+            btm_clear_line = np.max([int(np.mean(tops)), 0])
+            img_thresh[btm_clear_line, :] = 0
 
     return img_thresh
 
 
 def draw_btm_line(list_of_psb_chr, img_thresh):
     if len(list_of_psb_chr):
+        selected_btms = []
         btms = [x.pos_y + x.height for x in list_of_psb_chr]
+        for i in range(len(btms) - 1):
+            if abs(btms[i] - btms[i+1]) < img_thresh.shape[0] / 100 * 30:
+                selected_btms.append(btms[i])
         btm_clear_line = np.min([int(np.mean(btms)) + 1, img_thresh.shape[0] - 1])
         img_thresh[btm_clear_line, :] = 0
 
@@ -203,8 +245,8 @@ def matching_broken_chars(img_thresh, none_char):
             if i != j and i not in matched_none_char and j not in matched_none_char:
                 if abs(i.pos_x - j.pos_x) < im_width / 100 * 10 and abs(i.center_y - j.center_y) > im_height / 100 * 10\
                    and j.area > 30 and i.area > 30 and j.width > 5 and i.width > 5 and j.height > 5 and i.height > 5 \
-                   and j.height + j.pos_y < im_height - 6 and j.pos_y > im_height / 100 * 10 \
-                   and i.height + i.pos_y < im_height - 6 and i.pos_y > im_height / 100 * 10:
+                   and j.height + j.pos_y < im_height / 100 * 90 and j.pos_y > im_height / 100 * 10 \
+                   and i.height + i.pos_y < im_height / 100 * 90 and i.pos_y > im_height / 100 * 10:
 
                     sm = img_for_count[:, i.pos_x:i.pos_x + i.width].sum(axis=0)
                     sm = enumerate(sm, start=i.pos_x)
@@ -302,9 +344,9 @@ def del_blue(img_orig, list_of_psb_chr, img_thresh):
 
     _, roi = cv2.threshold(roi, 1, 1, cv2.THRESH_BINARY)
 
+    # cv2.imshow('lldfasfa', roi)
+    # cv2.waitKey(0)
     if np.mean(roi) < 0.3:
-        # img_thresh[:, 59] = 255
-
         # print(frst_char.pos_x + frst_char.width, frst_char.pos_x, frst_char.width)
         img_thresh[:, :frst_char.pos_x + frst_char.width] = 0
 
@@ -387,8 +429,8 @@ def histogram_kray_fill(img_thresh, img_grayscale, list_of_psb_chr):
         if mx > new_mx and ((mx > border and indx_max < indx_min) or (mx > first_max + 10 and indx_max > indx_min)):
             indx_max = np.argmax(hist[(x - 1) * frame:x * frame]) + (x - 1) * frame + 3
 
-            for i, kd in zip(list_of_psb_chr, range(len(list_of_psb_chr))):
-                if i.center_x < indx_max + shift < i.pos_x + i.width:
+            for i in list_of_psb_chr:
+                if i.center_x - (i.width / 4) < indx_max + shift < i.pos_x + i.width:
                     indx_max = i.pos_x + i.width + 2 - shift
                     break
 
@@ -398,7 +440,12 @@ def histogram_kray_fill(img_thresh, img_grayscale, list_of_psb_chr):
             img_thresh = img_thresh[:, :indx_max]
             img_grayscale = img_grayscale[:, :indx_max]
             break
-
+    # plt.plot(hist)
+    # plt.plot([0, width], [border, border])
+    # plt.plot([indx_max, indx_max], [np.max(hist), np.min(hist)])
+    # #
+    # #
+    # plt.show()
     return img_thresh, img_grayscale
 
 
@@ -445,21 +492,21 @@ def preprocess_plate_without_croping(img_orig):
     img_thresh = half_thresh(im)
     img_thresh = kray_fill(img_thresh, full_filling=True)
 
-    list_of_possible_chars, number_of_chars, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    list_of_psb_chr, number_of_chars, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
 
     if number_of_chars > 7:
-        img_thresh = replace_last_first(img_thresh, list_of_possible_chars, number_of_chars)
-        img_thresh = del_blue(img_orig, list_of_possible_chars, img_thresh)
+        img_thresh = replace_last_first(img_thresh, list_of_psb_chr, number_of_chars)
+        img_thresh = del_blue(img_orig, list_of_psb_chr, img_thresh)
 
-    list_of_possible_chars, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    list_of_psb_chr, _, _ = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
 
-    img_thresh = draw_top_line(list_of_possible_chars, img_thresh)
-    img_thresh = draw_btm_line(list_of_possible_chars, img_thresh)
+    img_thresh = draw_top_line(list_of_psb_chr, img_thresh)
+    img_thresh = draw_btm_line(list_of_psb_chr, img_thresh)
 
-    list_of_possible_chars, number_of_chars, none_char = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
+    list_of_psb_chr, number_of_chars, none_char = DetectChars.find_psbl_chr(img_thresh, [70, 3, 15, 0.1, 1.5])
 
     if number_of_chars >= 2:
-        img_thresh = separate_stick(img_thresh, list_of_possible_chars, none_char)
+        img_thresh = separate_stick(img_thresh, list_of_psb_chr, none_char)
 
     _, _, none_char = DetectChars.find_psbl_chr(img_thresh, [100, 4, 15, 0.15, 1])
 

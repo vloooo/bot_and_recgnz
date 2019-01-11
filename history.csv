@@ -1,2 +1,3 @@
-call_day,city,cnvrs_key,mileage,num_calls,phone,phone_for_offer,reg_num,serv_hist,stage,accept
-0,__,3,10000,0,+380938482501,+380938482501,__,__,0,False
+accept,call_day,city,cnvrs_key,mileage,num_calls,phone,phone_for_offer,reg_num,serv_hist,stage
+False,0,__,3,10000,0,+380938482501,380938482501.0,__,__,0
+,0,,3,10000,9,,,,,1

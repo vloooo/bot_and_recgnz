@@ -101,6 +101,8 @@ def find_chr_seq(psb_ch, list_of_chars, img, params, extra_cndtion=True, sorting
 
     center_x = [psb_ch.center_x]
     center_y = [psb_ch.pos_y]
+    btms = [psb_ch.pos_y + psb_ch.height]
+
     if sorting:
         matched_chrs = sorted(matched_chrs, key=lambda x: x.center_x)
 
@@ -115,14 +117,17 @@ def find_chr_seq(psb_ch, list_of_chars, img, params, extra_cndtion=True, sorting
         change_in_height = float(abs(pretending_ch.height - psb_ch.height)) / float(psb_ch.height)
         extra_key = True
         if extra_cndtion:
-            extra_key = abs(pretending_ch.pos_x - np.mean(center_x)) < img.shape[1] / 100 * 17 and \
-                        abs(pretending_ch.pos_y - np.mean(center_y)) < img.shape[0] / 100 * 3
+            extra_key = abs(pretending_ch.pos_x - np.mean(center_x)) < img.shape[1] / 100 * 20 and \
+                        abs(pretending_ch.pos_y - np.mean(center_y)) < img.shape[0] / 100 * 3 and \
+                        abs((pretending_ch.pos_y + pretending_ch.height) - np.mean(btms)) < img.shape[0] / 100 * 2.5
+
 
         if (distance < (psb_ch.diagonal_size * params[0]) and
                 angel < params[1] and change_in_area < params[2] and
                 change_in_width < params[3] and change_in_height < params[4] and extra_key):
             center_x.append(pretending_ch.center_x)
             center_y.append(pretending_ch.pos_y)
+            btms.append(pretending_ch.pos_y + pretending_ch.height)
             matched_chrs.append(pretending_ch)
 
     return matched_chrs
@@ -219,7 +224,7 @@ def recognize_chars(img_thresh, matched_chrs):
                 classes[0] = 22
                 m_key = False
 
-            if top_sum > bot_sum and 0.77 > bot_sum / top_sum > 0.1 and m_key:
+            if top_sum > bot_sum and 0.7 > bot_sum / top_sum > 0.1 and m_key:
                 classes[0] = 32
 
         if current_char.width < mean - 10:
@@ -229,9 +234,25 @@ def recognize_chars(img_thresh, matched_chrs):
             img_for_count = crop_letter(roi_gray)
             top_ar, bot_ar, top_sum, bot_sum, _ = find_full_lines(img_for_count)
             if len(top_ar) > 0 and len(bot_ar) > 0 and bot_sum > 1 and top_sum > 1:
+                # print('AAAAAAAAAAAAAA')
                 classes[0] = 10
             else:
+                # print('LLLLLL')
                 classes[0] = 21
+
+        if classes[0] == 24 or classes[0] == 30 or classes[0] == 0:
+            # print('ooooooooUUUUUUUUUU')
+            img_for_count = crop_o_u(roi_gray)
+            # cv2.imshow('buk', img_for_count*255)
+            # cv2.waitKey(0)
+
+            area = img_for_count.shape[0] * img_for_count.shape[1]
+            top_ar, bot_ar, top_sum, bot_sum, _ = find_full_lines(img_for_count, prcnt=65)
+            # print(len(top_ar), len(bot_ar), top_sum, bot_sum, area)
+            if len(top_ar) > 0 and top_sum/area > .1:
+                classes[0] = 30
+            else:
+                classes[0] = 24
 
         if classes[0] < 10:
             str_current_char = chr(classes[0] + 48)  # get character from results
@@ -278,11 +299,49 @@ def crop_letter(roi):
     return img_for_count
 
 
-def find_full_lines(img_for_count):
+def crop_o_u(roi):
+    # cv2.imshow('lldfasfa', roi)
+    # cv2.waitKey(0)
+    img_for_count = roi.copy()
+    _, img_for_count = cv2.threshold(img_for_count, 1, 1, cv2.THRESH_BINARY_INV)
+    sm_lines = img_for_count.sum(axis=1)
+    sm_cols = img_for_count.sum(axis=0)
+
+    top = 0
+    bottom = img_for_count.shape[0] - 1
+    left = 0
+    right = img_for_count.shape[1] - 1
+
+    for i in range(len(sm_lines) - 1):
+        if sm_lines[i] != 0:
+            top = i
+            break
+
+    for i in range(len(sm_lines) - 1, 0, -1):
+        if sm_lines[i] != 0:
+            bottom = i
+            break
+
+    for i in range(len(sm_cols) - 1):
+        if sm_cols[i]/img_for_count.shape[0] > .4:
+            left = i
+            break
+
+    for i in range(len(sm_cols) - 1, 0, -1):
+        if sm_cols[i]/img_for_count.shape[0] > .4:
+            right = i
+            break
+
+    img_for_count = img_for_count[top:bottom, left:right]
+    # cv2.imshow('lldfasfda', img_for_count*255)
+    # cv2.waitKey(0)
+    return img_for_count
+
+def find_full_lines(img_for_count, prcnt = 80):
     sm_lines = img_for_count.sum(axis=1)
 
     im_len = img_for_count.shape[1]
-    maximums = np.where(sm_lines > im_len / 100 * 80, 1, 0)
+    maximums = np.where(sm_lines > im_len / 100 * prcnt, 1, 0)
     top_sum = 1
     bot_sum = 1
     top_ar = []

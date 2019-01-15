@@ -2,7 +2,7 @@ lower_limit = 8
 upper_limit = 20
 recall_step = 1
 sleep_min = 3
-timeout = 3
+timeout = 0.5
 
 account_sid = 'ACf619e2ec98b61829ae5bf61ee745c29a'
 auth_token = '225f34810027794296c7bdfc5003fba5'

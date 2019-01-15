@@ -10,7 +10,6 @@ keybrd_inp_ph = 'Use the keyboard to enter the number, which you would like to r
 
 keybrd_inp_ml = 'Use the keyboard to enter the milleage of your car.'
 
-
 bye = 'Take care and goodbye for now.'
 
 phone_again = 'Hi, I am phoning you again to talk about your car. Last time we stoped on '
@@ -30,7 +29,7 @@ sixth_stage = ('Which of the following describes your car service history. '
 
 fivth_stage = 'Will it be convenient for you to get an offer for this phone number?'
 
-first_stage = 'my name is Julia. Would you be interested in us making you an offer for your car?'
+first_stage = 'my name is Mary. Would you be interested in us making you an offer for your car?'
 ######################################################################################################################
 
 stage_content = ['car available', 'would you interested', 'reg_num', 'mileage', 'city', 'mobile', 'serv_hist',

@@ -20,7 +20,7 @@ def detect_plates_in_scene(img_originl):
     psb_chars = find_vld_chrs_by_cascad(img_thresh_scene, img_gray)
     # cv2.imshow('lldfasfa', img_thresh_scene)
     # cv2.waitKey(0)
-
+    #
     # height, width, numChannels = img_originl.shape
     #
     # imgContours = np.zeros((height, width, 3), np.uint8)
@@ -34,7 +34,8 @@ def detect_plates_in_scene(img_originl):
     # cv2.imshow('PosP', imgContours)
     # cv2.waitKey(0)
 
-    all_matched_chars = DetectChars.find_all_cmbn_mtchng_chars(psb_chars, img_gray, [6., 12., 0.5, 1.2, .3]) #[6., 12., 1.2, 1.2, .3]
+    # [6., 12., 1.2, 1.2, .3] alternative params
+    all_matched_chars = DetectChars.find_all_cmbn_mtchng_chars(psb_chars, img_gray, [6., 12., 0.5, 1.2, .3])
 
 
 

@@ -21,16 +21,16 @@ ents = {
 subjects = ['my greeting', 'registration number of your car', ' mileage of your car', 'the nearest city to you',
             'phone number to offer', 'your car service history', 'making you offer']
 
-repeat_subj = [' is your car available?', 'are you interested?', '', '', 'the nearest city to you.',
-               phrases.fivth_stage, phrases.sixth_stage]
+repeat_subj = [' is your car available?', 'are you interested?', 'registration number of your car?', '',
+               'the nearest city to you.', phrases.fivth_stage, phrases.sixth_stage]
 
 serv_hist = ['1', '2', '3', 'full', 'part', 'parts', 'missing', 'lost', 'miss', 'no']
 
 serv_hist_kind = {'1': 'Full service history', 'full': 'Full service history',
                   '2': 'Part service history', 'part': 'Part service history', 'parts': 'Part service history',
-                  '3': 'haven\'t service history', 'no': 'haven\'t service history',
+                  '3': 'haven\'t service history', 'no': 'haven\'t service history', 'tree': 'haven\'t service history',
                   'miss': 'haven\'t service history', 'lost': 'haven\'t service history',
-                  'missing': 'haven\'t service history'}
+                  'missing': 'haven\'t service history', 'haven\'t': 'haven\'t service history'}
 
 cities = ['London', 'Birmingham', 'Leeds', 'Glasgow', 'Sheffield', 'Bradford', 'Liverpool', 'Edinburgh', 'Manchester',
           'Bristol', 'Kirklees', 'Fife', 'Wirral', 'North Lanarkshire', 'Wakefield', 'Cardiff', 'Dudley', 'Wigan',
@@ -79,4 +79,4 @@ part_of_cities = {'West Lancashire': 'Lancashire', 'Bracknell Forest': 'Bracknel
                   'Basingstoke & Deane': 'Deane', 'West Lothian': 'Lothian', 'Aylesbury Vale': 'Aylesbury',
                   'Southend on Sea': 'Southend', 'Stockton on Tees': 'Stockton', 'Milton Keynes': 'Milton',
                   'milton keynes': 'Keynes', 'South Gloucestershire': 'Gloucestershire', 'Stoke on Trent': 'Stoke',
-                  'Windsor & Maidenhead': 'Maidenhead', 'South Oxfordshire': 'Oxfordshire', 'Stoke Trent': 'Trent'}
+                  'Windsor & Maidenhead': 'Maidenhead', 'South Oxfordshire': 'Oxfordshire', 'Stoke o Trent': 'Trent'}

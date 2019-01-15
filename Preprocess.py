@@ -19,9 +19,9 @@ def preprocess_for_plate(img_orig):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(3, 3))
     im = clahe.apply(img_bl)
     # print(im)
-    # list_of_psb_chr = prepare_to_hist_clcl(im)
+    list_of_psb_chr = prepare_to_hist_clcl(im)
     # cv2.imshow('hoh', im)
-    cv2.waitKey(0)
+    # cv2.waitKey(0)
     img_thresh, img_grayscale = histogram_kray_fill(im, img_grayscale, list_of_psb_chr)
 
     img_thresh = half_thresh(img_thresh)

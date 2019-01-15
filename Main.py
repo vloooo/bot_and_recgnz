@@ -10,28 +10,29 @@ import Preprocess
 def main(image_url):
 
     # # loading image
-    # resp = urllib.request.urlopen(image_url)
-    # image_url = np.asarray(bytearray(resp.read()), dtype="uint8")
-    # imgOriginalScene = cv2.imdecode(image_url, cv2.IMREAD_COLOR)
-    imgOriginalScene = cv2.imread(image_url)
+    resp = urllib.request.urlopen(image_url)
+    image_url = np.asarray(bytearray(resp.read()), dtype="uint8")
+    im_org = cv2.imdecode(image_url, cv2.IMREAD_COLOR)
+    # im_org = cv2.imread(image_url)
 
     # croping useful area and resizing
-    h, w = imgOriginalScene.shape[:2]
-    crop_img = imgOriginalScene[int(h / 100 *30): h - 20, 40: w - 40]
+    h, w = im_org.shape[:2]
 
-    imgOriginalScene = imgOriginalScene[int(h / 100 *35): h - 20, 40: w - 40]
-    imgOriginalScene = cv2.resize(imgOriginalScene, (0, 0), fx=1.4, fy=1.4, interpolation=cv2.INTER_CUBIC)
+    im_org = im_org[int(h / 100 *35): h - 20, 40: w - 40]
+    im_org = cv2.resize(im_org, (0, 0), fx=1.4, fy=1.4, interpolation=cv2.INTER_CUBIC)
 
-    if imgOriginalScene is None:
-        return 'AA11AAA'
+    if im_org is None:
+        return 'AA00AAA'
 
-    listOfPossiblePlates = DetectPlates.detect_plates_in_scene(imgOriginalScene)  # detect plates
+    listOfPossiblePlates = DetectPlates.detect_plates_in_scene(im_org)  # detect plates
 
     if len(listOfPossiblePlates) > 1:
         listOfPossiblePlates = [choose_plate_to_handle(listOfPossiblePlates)]  # we don't need more than one plate
 
     listOfPossiblePlates = DetectChars.detect_chars_in_plates(listOfPossiblePlates)  # detect chars in plates
 
+    # for i in listOfPossiblePlates:
+    #     print(i.strChars, 'kkk')
     # plates with more than 8 symbols untruth
     listOfPossiblePlates = [x for x in listOfPossiblePlates if len(x.strChars) < 8]
 

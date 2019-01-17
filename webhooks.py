@@ -1,7 +1,7 @@
 import string
 from flask import Flask, request
 import spacy
-from ents import ents, subjects
+from ents import ents, subjects_of_stages
 import pandas as pd
 from nltk.stem import WordNetLemmatizer
 import re
@@ -41,7 +41,7 @@ client = Client(config.account_sid, config.auth_token)
 echo_url = config.echo_url
 start_url = config.start_url
 
-ngrok_url = config.ngrok_url
+ngrok_url = config.qwestion_url
 nlp = spacy.load('en_core_web_md')
 app = Flask(__name__)  # работа с вебом
 
@@ -164,7 +164,7 @@ def collect_redirect_speech(phone):
     response = VoiceResponse()
 
     response.say('Hi, I am phoning you again to talk about your car. Last time we stoped on ' +
-                 subjects[out['stage'][out.phone == phone][0] - 1])
+                 subjects_of_stages[out['stage'][out.phone == phone][0] - 1])
 
     response.redirect(ngrok_url + str(out['stage'][out.phone == phone][0]))
     return response.to_xml()
@@ -313,9 +313,9 @@ def undrstnd_newques_reask(phone):
     # проверка не задаём ли мы данный вопрос повторно (если да то вопросительная фраза другая)
     if out['again_key'][out.phone == phone][0]:
         out['again_key'][out.phone == phone] = False
-        return 'could you talk ' + subjects[out['stage'][out.phone == phone][0] - 2] + ' again?'
+        return 'could you talk ' + subjects_of_stages[out['stage'][out.phone == phone][0] - 2] + ' again?'
     else:
-        return 'Please dictate ' + subjects[out['stage'][out.phone == phone][0] - 2]
+        return 'Please dictate ' + subjects_of_stages[out['stage'][out.phone == phone][0] - 2]
 
 
 def write_user_answer(text, phone):
@@ -726,7 +726,7 @@ def call_auto():
 
     """
     while True:
-        if config.lower_limit <= datetime.utcnow().hour < config.upper_limit:
+        if config.lwr_time_lim <= datetime.utcnow().hour < config.upr_time_lim:
             make_calls()
             time.sleep(config.sleep_min * 60)
         else:
@@ -740,7 +740,7 @@ def make_calls():
     совершает звонок, если имеются подходящие записи
     """
 
-    filtered_for_recall = out[out.cnvrs_key == 1][abs(out.call_hour - datetime.utcnow().hour) > config.recall_step] \
+    filtered_for_recall = out[out.cnvrs_key == 1][abs(out.call_hour - datetime.utcnow().hour) > config.recall_day_step] \
         [out.number_of_calls < config.last_call]
     candidates_to_call = pd.concat([out[out.cnvrs_key == 0], filtered_for_recall])
 
@@ -783,10 +783,10 @@ def add_person():
 @app.route('/snd', methods=['POST', 'GET'])
 def snd():
     pers = {'photo_url': 'http://www.letchworthmini.co.uk/s/cc_images/cache_71011477.JPG', 'phone': '+9379992'}
-    requests.post(config.main_url + 'extract_num', json=pers)
+    requests.post(config.main_url + 'get_data', json=pers)
 
 
-@app.route('/extract_num', methods=['POST', 'GET'])
+@app.route('/get_data', methods=['POST', 'GET'])
 def extract_num():
     try:
         xls = pd.ExcelFile(request.files['pic'])
@@ -856,7 +856,7 @@ def add_field_to_dict(value, pos_field, req):
 
 @app.route('/i')
 def index():
-    return """<form action="/extract_num" method="post" enctype="multipart/form-data">
+    return """<form action="/get_data" method="post" enctype="multipart/form-data">
                 <input type="file" name="pic">
                 <input type="submit" name="submit">
                 </form>"""

@@ -1,8 +1,2 @@
 accept,call_day,city,cnvrs_key,mileage,num_calls,phone,phone_for_offer,reg_num,serv_hist,stage
-False,0.0,__,3.0,10000.0,0.0,+380938482501,380938482501.0,__,__,0.0
-accept  again_key  call_day        city  cnvrs_key  first_ques                                            img_url   mileage    ngt  num_calls        phone phone_for_offer    pst                    reg_num  repeat_qwe serv_hist  stage,,,,,,,,,,
-None       True         0                      3       False                                                      10000.0   True          9                                True                                   True                1,,,,,,,,,,
-None      False         0     Moseley          0       False  https://www.autotrader.co.uk/classified/advert...  106470.0  False          0  +7786039676            None  False              A A 0 0 A A A       False      None      1,,,,,,,,,,
-None      False         0        Hull          0       False  https://www.autotrader.co.uk/classified/advert...  102000.0  False          0  +7786039676            None  False  A   A   0   0   A   A   A       False      None      1,,,,,,,,,,
-None      False         0  Manchester          0       False  https://www.autotrader.co.uk/classified/advert...       NaN  False          0  +7786039676            None  False  A   A   0   0   A   A   A       False      None      1,,,,,,,,,,
-,0,,3,10000,9,,,,,1
+False,0,__,3,10000,0,+380938482501,+380938482501.0,__,__,0

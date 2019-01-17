@@ -76,15 +76,14 @@ def preprocess_for_plate(img_orig):
 
     for i in list_of_psb_chr:
         x1 = np.max([i.pos_x - 2, 0])
-        y1 = np.min([i.pos_y + i.height + 1, height - 1])
+        y2 = np.min([i.pos_y + i.height + 1, height - 1])
+        x2 = np.min([i.pos_x + i.width + 2, width - 1])
+        y1 = np.max([i.pos_y - 1, 0])
 
-        roi = img_grayscale[:, x1: i.pos_x + i.width + 2]
+        roi = img_grayscale[:, x1:x2]
 
-        _, img_for_rcgnz[i.pos_y - 1:y1, x1: i.pos_x + i.width + 2] = \
-            cv2.threshold(roi[i.pos_y - 1:y1, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-        _, img_thresh[i.pos_y - 1:y1, x1: i.pos_x + i.width + 2] = \
-            cv2.threshold(roi[i.pos_y - 1:y1, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        _, img_for_rcgnz[y1:y2, x1:x2] = cv2.threshold(roi[y1:y2, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        _, img_thresh[y1:y2, x1:x2] = cv2.threshold(roi[y1:y2, :], 2, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     list_of_psb_chr, number_of_chars, _ = DetectChars.find_psbl_chr(img_tmp, [70, 3, 15, 0.1, 1.5])
     if number_of_chars > 7:

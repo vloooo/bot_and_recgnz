@@ -13,6 +13,7 @@ ADD Main.py /
 ADD modelL2.h5 /
 ADD haarcascade_russian_plate_number.xml /
 RUN pip install twilio pandas flask numpy tensorflow keras openpyxl xlrd 
+RUN pip install --upgrade pocketsphinx
 RUN pip install Pillow opencv-python matplotlib SpeechRecognition lxml beautifulsoup4
 CMD [ "python", "/record_webhook.py"]
 

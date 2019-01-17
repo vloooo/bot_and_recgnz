@@ -12,17 +12,21 @@ def detect_chars_in_plates(list_of_possible_plates):
     if len(list_of_possible_plates) == 0:  # if list of possible plates is empty
         return list_of_possible_plates
 
-        # at this point we can be sure the list of possible plates has at least one plate
+
     list_of_possible_plates_refined = []
+    # handle both photo to finding characters, and recognize chr
     for psbl_plate in list_of_possible_plates:
+        # strict preprocessing
         psbl_plate.img_gray, psbl_plate.img_thresh, psbl_plate.img_4_rcgnz = \
             Preprocess.preprocess_for_plate(psbl_plate.img_plate)
 
+        # resizing
         psbl_plate.img_thresh = cv2.resize(psbl_plate.img_thresh, (0, 0), fx=1.6, fy=1.6,
                                            interpolation=cv2.INTER_LINEAR)
         psbl_plate.img_4_rcgnz = cv2.resize(psbl_plate.img_4_rcgnz, (0, 0), fx=1.6, fy=1.6,
                                             interpolation=cv2.INTER_LINEAR)
 
+        # thresholding
         _, psbl_plate.img_thresh = cv2.threshold(psbl_plate.img_thresh, 0.0, 255.0,
                                                  cv2.THRESH_BINARY | cv2.THRESH_OTSU)
         _, psbl_plate.img_4_rcgnz = cv2.threshold(psbl_plate.img_4_rcgnz, 0.0, 255.0,
@@ -31,16 +35,18 @@ def detect_chars_in_plates(list_of_possible_plates):
         # find all possible chars in the plate,
         possible_chars_in_plate, _, _ = find_psbl_chr(psbl_plate.img_thresh, [70, 3, 15, 0.1, 1.5])
 
-        # given a list of all possible chars, find groups of matching chars within the plate
+        # find groups of matching chars within the plate
         matching_chars_in_plate = \
             find_all_cmbn_mtchng_chars(possible_chars_in_plate, psbl_plate.img_thresh, [10., 33., 1, 1, 0.3], False,
                                        False)
 
+        # if didn't find groups of matching char pass empty string
         if len(matching_chars_in_plate) == 0:
             psbl_plate.strChars = ""
             continue
 
-        for i in range(0, len(matching_chars_in_plate)):  # within each list of matching chars
+        # remove_overlapping_chars
+        for i in range(0, len(matching_chars_in_plate)):
             matching_chars_in_plate[i].sort(key=lambda matching_char: matching_char.center_x)
             matching_chars_in_plate[i] = remove_overlapping_chars(matching_chars_in_plate[i])
 
@@ -121,7 +127,6 @@ def find_chr_seq(psb_ch, list_of_chars, img, params, extra_cndtion=True, sorting
                         abs(pretending_ch.pos_y - np.mean(center_y)) < img.shape[0] / 100 * 3 and \
                         abs((pretending_ch.pos_y + pretending_ch.height) - np.mean(btms)) < img.shape[0] / 100 * 2.5
 
-
         if (distance < (psb_ch.diagonal_size * params[0]) and
                 angel < params[1] and change_in_area < params[2] and
                 change_in_width < params[3] and change_in_height < params[4] and extra_key):
@@ -182,8 +187,6 @@ def remove_overlapping_chars(matched_chrs):
 
 def recognize_chars(img_thresh, matched_chrs):
     str_chars = ""
-    # cv2.imshow('hoh', img_thresh)
-    # cv2.waitKey(0)
     height, width = img_thresh.shape
     img_thresh_color = np.zeros((height, width, 3), np.uint8)
     _, img_thresh = cv2.threshold(img_thresh, 0.0, 255.0, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
@@ -191,6 +194,7 @@ def recognize_chars(img_thresh, matched_chrs):
     cv2.cvtColor(img_thresh, cv2.COLOR_GRAY2BGR, img_thresh_color)
 
     matched_chrs.sort(key=lambda x: x.center_x)  # sort chars from left to right
+
     sm = 0
     for i in matched_chrs:
         sm += i.width
@@ -234,30 +238,25 @@ def recognize_chars(img_thresh, matched_chrs):
             img_for_count = crop_letter(roi_gray)
             top_ar, bot_ar, top_sum, bot_sum, _ = find_full_lines(img_for_count)
             if len(top_ar) > 0 and len(bot_ar) > 0 and bot_sum > 1 and top_sum > 1:
-                # print('AAAAAAAAAAAAAA')
                 classes[0] = 10
             else:
-                # print('LLLLLL')
                 classes[0] = 21
 
         if classes[0] == 24 or classes[0] == 30 or classes[0] == 0:
-            # print('ooooooooUUUUUUUUUU')
             img_for_count = crop_o_u(roi_gray)
-            # cv2.imshow('buk', img_for_count*255)
-            # cv2.waitKey(0)
 
             area = img_for_count.shape[0] * img_for_count.shape[1]
             top_ar, bot_ar, top_sum, bot_sum, _ = find_full_lines(img_for_count, prcnt=65)
-            # print(len(top_ar), len(bot_ar), top_sum, bot_sum, area)
-            if len(top_ar) > 0 and top_sum/area > .1:
+            if len(top_ar) > 0 and top_sum / area > .1:
                 classes[0] = 30
             else:
                 classes[0] = 24
 
+        # get character from results
         if classes[0] < 10:
-            str_current_char = chr(classes[0] + 48)  # get character from results
+            str_current_char = chr(classes[0] + 48)
         else:
-            str_current_char = chr(classes[0] + 55)  # get character from results
+            str_current_char = chr(classes[0] + 55)
 
         str_chars = str_chars + str_current_char
     return str_chars
@@ -300,8 +299,6 @@ def crop_letter(roi):
 
 
 def crop_o_u(roi):
-    # cv2.imshow('lldfasfa', roi)
-    # cv2.waitKey(0)
     img_for_count = roi.copy()
     _, img_for_count = cv2.threshold(img_for_count, 1, 1, cv2.THRESH_BINARY_INV)
     sm_lines = img_for_count.sum(axis=1)
@@ -323,21 +320,20 @@ def crop_o_u(roi):
             break
 
     for i in range(len(sm_cols) - 1):
-        if sm_cols[i]/img_for_count.shape[0] > .4:
+        if sm_cols[i] / img_for_count.shape[0] > .4:
             left = i
             break
 
     for i in range(len(sm_cols) - 1, 0, -1):
-        if sm_cols[i]/img_for_count.shape[0] > .4:
+        if sm_cols[i] / img_for_count.shape[0] > .4:
             right = i
             break
 
     img_for_count = img_for_count[top:bottom, left:right]
-    # cv2.imshow('lldfasfda', img_for_count*255)
-    # cv2.waitKey(0)
     return img_for_count
 
-def find_full_lines(img_for_count, prcnt = 80):
+
+def find_full_lines(img_for_count, prcnt=80):
     sm_lines = img_for_count.sum(axis=1)
 
     im_len = img_for_count.shape[1]
@@ -412,7 +408,7 @@ def find_psbl_chr(img_thresh, psbl_char_params, explore_area=False):
     _, contours, _ = cv2.findContours(img_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     plate_area = img_thresh.shape[0] * img_thresh.shape[1]
 
-    for contour in range(len(contours)):  # for each contour
+    for contour in range(len(contours)):
         possible_char = PossibleChar.PossibleChar(contours[contour])
         lttr_area = possible_char.height * possible_char.width
 
@@ -430,12 +426,9 @@ def find_psbl_chr(img_thresh, psbl_char_params, explore_area=False):
     return list_of_possible_chars, number_of_chars, none_char
 
 
-# if DetectChars.check_if_possible_char(possible_char, [120, 8, 10, 0.25, 1.5]):
-
-def check_if_possible_char(possible_char, psbl_char_params):
-    if (possible_char.area > psbl_char_params[0] and possible_char.width > psbl_char_params[1]
-            and possible_char.height > psbl_char_params[2] and
-            psbl_char_params[3] < possible_char.aspect_ratio and possible_char.aspect_ratio < psbl_char_params[4]):
+def check_if_possible_char(psb_char, params):
+    if (psb_char.area > params[0] and psb_char.width > params[1] and psb_char.height > params[2] and
+            params[3] < psb_char.aspect_ratio < params[4]):
         return True
     else:
         return False

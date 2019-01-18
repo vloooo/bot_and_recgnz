@@ -46,7 +46,7 @@ client = Client(config.account_sid, config.auth_token)
 echo_url = config.echo_url
 
 # main url for all requests
-ngrok_url = config.qwestion_url
+qwe_url = config.qwestion_url
 app = Flask(__name__)
 
 # for exel parsing, (exel_updated is to switch we have/haven't new exel for parsing)
@@ -63,18 +63,15 @@ this Db use phone like client unique identificator (if phones different clients 
  unexpected)
 """
 out = pd.DataFrame(
-    {"reg_num": ['AS 123 SD', None, None], "mileage": ['1500', None, None], "city": ['London', None, None],
-     "phone": ["+380999051660", "+380959293096", "+3333333333333"], "phone_for_offer": [None, None, None],
-     "serv_hist": [None, None, None], 'again_key': [False, False, False], 'stage': [7, 1, 1],
-     'pst': [False, False, False], 'ngt': [False, False, False], 'cnvrs_key': [0, 1, 2], 'num_calls': [0, 0, 3],
-     'first_ques': [False, False, False], 'call_day': [0, 0, 0], 'accept': [None, None, None], 'img_url':
-     ['https://www.classicdriver.com/sites/default/files/styles/full_width_slider/public/article_images/v12_laf_laferrari_01.jpg?itok=oS1qvHEQ', None, None], 'repeat_qwe': [True, True, True]})
+    {"reg_num": [''], "mileage": [10000], "city": [''], "phone": [''], "phone_for_offer": [''], 'num_calls': [9],
+     "serv_hist": [''], 'again_key': [True], 'stage': [1], 'pst': [True], 'ngt': [True], 'cnvrs_key': [3],
+     'first_ques': [False], 'call_day': [0], 'accept': [None], 'img_url': [''], 'repeat_qwe': [True]})
 
 # tokens for outer ALPR
 tokens = ['7eb82f1ed5e6ceeca6b26f8316b31717fde0bb25', 'f9e106e2c0a0c6a2493181fd724cdb7b89600af9',
           '9118e9c1b2a3f65c39b8d90453db99165fb201f0', '0e8c566ad072d543aae409d576012ee4e98a766e']
 
-quiq_recall_numbers = []  # list for numbers that need quick recall
+quick_recall_numbers = []  # list for numbers that need quick recall
 
 
 #                                            find special values
@@ -103,19 +100,37 @@ def find_city(client_speech, phone):
     """
     # delete punct
     translation = {ord(x): None for x in string.punctuation}
-    client_speech = client_speech.translate(translation).lower()
-
+    client_speech = client_speech.lower()
+    client_speech_without_punct = client_speech.translate(translation)
+    # most likely cities
+#############################################################
     # find full city name
     for i in ents.cities:
-        if i.lower() in client_speech:
+        if i.lower() in client_speech_without_punct:
             out['city'][out['phone'] == phone] = i
             return True
 
     # find part of city name
-    client_speech = client_speech.split(' ')
+    client_speech_without_punct = client_speech_without_punct.split(' ')
     for key, value in ents.part_of_cities.items():
-        if value.lower() in client_speech:
+        if value.lower() in client_speech_without_punct:
             out['city'][out['phone'] == phone] = key
+            return True
+#############################################################
+
+    for i in ents.full_city_lst:
+        if i.lower() in client_speech:
+            out['city'][out['phone'] == phone] = i
+            return True
+
+    for i in ents.scotish_city:
+        if i.lower() in client_speech_without_punct:
+            out['city'][out['phone'] == phone] = i
+            return True
+
+    for i in ents.welsh_city:
+        if i.lower() in client_speech:
+            out['city'][out['phone'] == phone] = i
             return True
 
     return False
@@ -288,7 +303,7 @@ def collect_twml_record(text, phone_number, rsp, sufix=''):
     """
     stg = str(out[out.phone == phone_number]['stage'].values[0])  # stage of conversation with certain client
     rsp.say(text)
-    rsp.record(finish_on_key='*', play_beep=False, timeout=str(config.timeout), action=ngrok_url + stg + sufix,
+    rsp.record(finish_on_key='*', play_beep=False, timeout=str(config.timeout), action=qwe_url + stg + sufix,
                max_length=6)
 
     return rsp
@@ -304,7 +319,7 @@ def collect_redirect(phone):
     # tell which theme was the last in previous conversation and pass necessary stage
     response.say(phrases.phone_again + subjects_of_stages[out['stage'][out.phone == phone].values[0] - 2])
     out['stage'][out.phone == phone] = out['stage'][out.phone == phone].values[0] - 1
-    response.redirect(ngrok_url + str(out['stage'][out.phone == phone].values[0]))
+    response.redirect(qwe_url + str(out['stage'][out.phone == phone].values[0]))
     return response.to_xml()
 
 
@@ -313,7 +328,7 @@ def collect_dgt_gather(text, phone, sufix=''):
     collect TwiML digit gather that will say TEXT
     """
     stg = str(out[out.phone == phone]['stage'].values[0])
-    gather = Gather(input='dtmf', numDigits=str(config.digits_per_phone), timeout=6, action=ngrok_url + stg + sufix,
+    gather = Gather(input='dtmf', numDigits=str(config.digits_per_phone), timeout=6, action=qwe_url + stg + sufix,
                     finish_on_key='*')
     gather.say(text)
     return gather
@@ -576,13 +591,13 @@ def set_urls(url):
     """
     set new url path
     """
-    global ngrok_url
+    global qwe_url
 
     config.main_url = 'https://' + url + '/'
     config.recive_url = config.main_url + 'receiver'
 
     config.qwestion_url = config.main_url + 'question'
-    ngrok_url = config.qwestion_url
+    qwe_url = config.qwestion_url
     return 'success', 200
 
 
@@ -1037,14 +1052,14 @@ def initiate_call(twiml, phone):
         if phone.find('+44028') != -1:
             outbound_num = config.twilio_numbers['Irl']
 
-        desire_city = out['city'][out.phone == phone].values[0]
-        for i in ents.scottish_city:
-            if i in desire_city:
+        desire_city = out['city'][out.phone == phone].values[0].lower()
+        for i in ents.scotish_city:
+            if i.lower() in desire_city:
                 outbound_num = config.twilio_numbers['Sco']
                 break
 
         for i in ents.welsh_city:
-            if i in desire_city:
+            if i.lower() in desire_city:
                 outbound_num = config.twilio_numbers['Wel']
                 break
 
@@ -1072,6 +1087,7 @@ def call_auto():
     global exel_updated
 
     while True:
+        out.to_csv('Db.csv', index=False)
         if config.lwr_time_lim <= datetime.utcnow().hour < config.upr_time_lim:
             make_calls()
             time.sleep(config.sleep_min * 60)
@@ -1088,7 +1104,7 @@ def make_calls():
     """
     initiate calls if have suitable records
     """
-    global quiq_recall_numbers, exel_updated
+    global quick_recall_numbers, exel_updated
     # recall clients that didn't finish conversation
     num_calls = np.max([config.num_calls_per_time - quiq_recalls(), 2])
 
@@ -1117,7 +1133,7 @@ def make_calls():
 
             for phone in phone_num_list:
                 # set constants
-                quiq_recall_numbers.append(phone)
+                quick_recall_numbers.append(phone)
                 set_num_calls(phone)
                 set_call_day(phone)
 
@@ -1142,10 +1158,10 @@ def quiq_recalls():
     """
     recall to clients that didn't pick up the phone or stoped call before conversation ends.
     """
-    global quiq_recall_numbers
+    global quick_recall_numbers
     num_calls = 0
 
-    for phone in quiq_recall_numbers:
+    for phone in quick_recall_numbers:
 
         # choose only clients that didn't finish call
         if out['cnvrs_key'][out.phone == phone].values[0] == 1 or out['cnvrs_key'][out.phone == phone].values[0] == 0:
@@ -1163,7 +1179,7 @@ def quiq_recalls():
             initiate_call(twiml=twiml_xml, phone=phone)
             num_calls += 1
 
-    quiq_recall_numbers.clear()
+    quick_recall_numbers.clear()
     return num_calls
 
 
@@ -1351,6 +1367,29 @@ def index():
                 <input type="file" name="ex">
                 <input type="submit" name="submit">
                 </form>"""
+
+
+@app.route('/restore')
+def restore_db():
+    global out
+    out = pd.read_csv('Db.csv')
+
+
+@app.route('/set_db_form')
+def set_db_form():
+    """
+    web-form to load csv with data
+    """
+    return '<form action="' + config.main_url + """set_db" method="post" enctype="multipart/form-data">
+                <input type="file" name="ex">
+                <input type="submit" name="submit">
+                </form>"""
+
+
+@app.route('/set_db', methods=['POST'])
+def set_db():
+    global out
+    out = pd.read_csv(request.files['ex'])
 
 
 @app.route('/ir')

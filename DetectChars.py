@@ -5,8 +5,6 @@ import Preprocess
 import PossibleChar
 import record_webhook
 
-np.set_printoptions(threshold=np.nan)
-
 
 def detect_chars_in_plates(list_of_possible_plates):
     if len(list_of_possible_plates) == 0:  # if list of possible plates is empty

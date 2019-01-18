@@ -706,7 +706,7 @@ def initiate_call(twiml, phone):
     """
 
     """
-    client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=phone, from_=config.twilio_number, record=True)
+    client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=phone, from_=config.twilio_numbers, record=True)
 
 
 @app.route('/test_call', methods=['GET', 'POST'])
@@ -716,7 +716,7 @@ def test_call():
     """
     twiml = collect_2gathers_response(text=phrases.greeting,
                                       hints=phrases.pst_hint, phone=config.phone_for_test, add_step=False)
-    client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=config.phone_for_test, from_=config.twilio_number,
+    client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=config.phone_for_test, from_=config.twilio_numbers,
                         record=True)
 
 

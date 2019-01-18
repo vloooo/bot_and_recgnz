@@ -73,6 +73,7 @@ out = pd.DataFrame(
 # tokens for outer ALPR
 tokens = ['7eb82f1ed5e6ceeca6b26f8316b31717fde0bb25', 'f9e106e2c0a0c6a2493181fd724cdb7b89600af9',
           '9118e9c1b2a3f65c39b8d90453db99165fb201f0', '0e8c566ad072d543aae409d576012ee4e98a766e']
+
 quiq_recall_numbers = []  # list for numbers that need quick recall
 
 
@@ -141,7 +142,7 @@ def find_plate_out_serv(phone):
         out['reg_num'][out['phone'] == phone] = response.json()['results'][0]['plate'].upper()
     except:
         # if some error occur we add standard false value
-        out['reg_num'][out['phone'] == phone] = 'AA00AAA'
+        out['reg_num'][out['phone'] == phone] = 'A A 0 0 A A A'
 
 
 def find_plate_from_speech(client_speech, phone):
@@ -185,13 +186,16 @@ def find_plate_from_speech(client_speech, phone):
     return found
 
 
-def find_plate_by_network(url):
+def find_plate_by_network(url, req, indx):
+    """
+    find LP on all images from main url
+    """
     counter_for_break = 0
     # BeautifulSoup can failed 4 times from 10, and we can receive unvalid url,
     # if some error occur return standard false plate
     while True:
         # if unvalid url was receivde, we can't parse site and return standard false plate
-        if counter_for_break == 20:
+        if counter_for_break == 10:
             break
         try:
             # parse site
@@ -208,6 +212,8 @@ def find_plate_by_network(url):
                 except KeyError:
                     urls.append(imgs[i]['src'])
 
+            # to save the most likely image_url
+            plate_with_url = {}
             for i in urls:
                 # read image from url
                 resp = urlopen(i)
@@ -228,26 +234,35 @@ def find_plate_by_network(url):
                 if len(plates):
                     with graph.as_default():
                         try:
-                            psb_plates.append(' '.join(list(Main.main(i))))
+                            plt = ' '.join(list(Main.main(i)))
+                            psb_plates.append(plt)
+                            plate_with_url[plt] = i
                         except:
                             psb_plates.append('A A 0 0 A A A')
+                            plate_with_url['A A 0 0 A A A'] = i
 
             # if all plate's values is the same, then return this value
             if len(set(psb_plates)) == 1:
+                req['img_url'][indx] = plate_with_url[psb_plates[0]]
                 return psb_plates[0]
             # else check whether we have value
             elif len(set(psb_plates)):
                 psb_plates = [x for x in psb_plates if x != 'A A 0 0 A A A' and len(x) > 10]
                 # delete all standard errors  and check if all another plate's values is the same
                 if len(set(psb_plates)) == 1:
+                    req['img_url'][indx] = plate_with_url[list(set(psb_plates))[0]]
                     return list(set(psb_plates))[0]
                 counted_enters = Counter(psb_plates)
                 counted_enters = counted_enters.most_common(2)
                 # return most common or longest value
                 if counted_enters[0][1] > counted_enters[1][1] or \
                         len(counted_enters[0][0]) >= len(counted_enters[1][0]):
+
+                    req['img_url'][indx] = plate_with_url[counted_enters[0][0]]
                     return counted_enters[0][0]
+
                 else:
+                    req['img_url'][indx] = plate_with_url[counted_enters[1][0]]
                     return counted_enters[1][0]
             else:
                 return 'A A 0 0 A A A'
@@ -791,6 +806,9 @@ def question4_1():
 
 
 def check_city_is_nan(phone, txt):
+    """
+    if city is NaN, will ask another question
+    """
     if pd.isna(out['city'][out['phone'] == phone].values)[0]:
         twiml_xml = collect_2gathers_response(text='Please dictate the nearest city to you.', sufix='_1', phone=phone)
     else:
@@ -1013,7 +1031,24 @@ def initiate_call(twiml, phone):
     initiate call by twilio
     """
     try:
-        client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=phone, from_=config.twilio_number)
+        # decide which twilio number choose to call
+        outbound_num = config.twilio_numbers['Eng']
+
+        if phone.find('+44028') != -1:
+            outbound_num = config.twilio_numbers['Irl']
+
+        desire_city = out['city'][out.phone == phone].values[0]
+        for i in ents.scottish_city:
+            if i in desire_city:
+                outbound_num = config.twilio_numbers['Sco']
+                break
+
+        for i in ents.welsh_city:
+            if i in desire_city:
+                outbound_num = config.twilio_numbers['Wel']
+                break
+
+        client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=phone, from_=outbound_num)
     except:
         print('')
 
@@ -1025,7 +1060,7 @@ def test_call():
     """
     twiml = collect_2gathers_response(text=phrases.greeting, phone=config.phone_for_test, add_step=False)
     client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=config.phone_for_test,
-                        from_=config.twilio_number)
+                        from_=config.twilio_numbers['Eng'])
 
 
 @app.route('/call_auto')
@@ -1205,7 +1240,7 @@ def parse_exel():
                                                                                     'Location': 'city',
                                                                                     'Featured Image': 'img_url'})
         # add + to phones
-        df['phone'] = '+' + df['phone']
+        df['phone'] = '+44' + df['phone']
 
         # delete United Kingdom from city names
         for city_name in df['city']:
@@ -1219,7 +1254,7 @@ def parse_exel():
         req['reg_num'] = {}
         for j in range(len(req['phone'])):
             try:
-                req['reg_num'][j] = find_plate_by_network(req['img_url'][j])
+                req['reg_num'][j] = find_plate_by_network(req['img_url'][j], req, j)
             except:
                 req['reg_num'][j] = 'A A 0 0 A A A'
 

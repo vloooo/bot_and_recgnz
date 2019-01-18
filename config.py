@@ -6,7 +6,7 @@ timeout = 3        # time of silence that twilio
 
 account_sid = 'ACf619e2ec98b61829ae5bf61ee745c29a'
 auth_token = '225f34810027794296c7bdfc5003fba5'
-twilio_number = '+16267689921'
+twilio_numbers = {'Eng': '+16267689921', 'Sco': "+44", 'Wel': '+44', 'Irl': '+44'}
 phone_for_test = '+380999051660'
 
 main_url = 'https://c798f811.ngrok.io/'

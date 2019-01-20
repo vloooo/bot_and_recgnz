@@ -62,10 +62,18 @@ cascade = cv2.CascadeClassifier('haarcascade_russian_plate_number.xml')
 this Db use phone like client unique identificator (if phones different clients will coincide programm will behave
  unexpected)
 """
-out = pd.DataFrame(
-    {"reg_num": [''], "mileage": [10000], "city": [''], "phone": [''], "phone_for_offer": [''], 'num_calls': [9],
-     "serv_hist": [''], 'again_key': [True], 'stage': [1], 'pst': [True], 'ngt': [True], 'cnvrs_key': [3],
-     'first_ques': [False], 'call_day': [0], 'accept': [None], 'img_url': [''], 'repeat_qwe': [True]})
+
+out = pd.DataFrame({"reg_num": ['AS 123 SD', None, None], "mileage": ['1500', None, None], "city": ['London', None, None],
+ "phone": ["+380669631139", "+380959293096", "+3333333333333"], "phone_for_offer": [None, None, None],
+ 'num_calls': [9, 0, 0], "serv_hist": [None, None, None], 'stage': [7, 3, 1],
+ 'pst': [False, False, False], 'ngt': [False, False, False], 'cnvrs_key': [0, 1, 2], 'number_of_calls': [0, 0, 3],
+ 'first_ques': [False, False, False], 'call_day': [0, 0, 0], 'accept': [None, None, None], 'img_url':
+     ['https://www.classicdriver.com/sites/default/files/styles/full_width_slider/public/article_images/v12_laf_laferrari_01.jpg?itok=oS1qvHEQ',
+         None, None], 'rpt_amnt': [0, 0, 0],  'repeat_qwe': [True, True, True]})
+# out = pd.DataFrame(
+#     {"reg_num": [''], "mileage": [10000], "city": [''], "phone": [''], "phone_for_offer": [''], 'num_calls': [9],
+#      "serv_hist": [''], 'stage': [1], 'pst': [True], 'ngt': [True], 'cnvrs_key': [3], 'rpt_amnt': [0],
+#      'first_ques': [False], 'call_day': [0], 'accept': [None], 'img_url': [''], 'repeat_qwe': [True]})
 
 # tokens for outer ALPR
 tokens = ['7eb82f1ed5e6ceeca6b26f8316b31717fde0bb25', 'f9e106e2c0a0c6a2493181fd724cdb7b89600af9',
@@ -303,9 +311,9 @@ def collect_twml_record(text, phone_number, rsp, sufix=''):
     """
     stg = str(out[out.phone == phone_number]['stage'].values[0])  # stage of conversation with certain client
     rsp.say(text)
-    rsp.record(finish_on_key='*', play_beep=False, timeout=str(config.timeout), action=qwe_url + stg + sufix,
-               max_length=6)
-
+    rsp.record(finish_on_key='*', play_beep=False, timeout=config.timeout, action=qwe_url + stg + sufix,
+               max_length=5)
+    #, trim='do-not-trim'
     return rsp
 
 
@@ -343,7 +351,6 @@ def collect_2gathers_response(text, phone, sufix='', add_step=True, timeout='aut
         sufix ==> (str) '' или '_1' для перехода к побочной ветке диалога
         add_step ==> (bool) если True диалог движется к следующему вопросу
     """
-
     global out
 
     if add_step:
@@ -432,8 +439,7 @@ def get_pos_neg(client_speech, phone):
     return out['pst'][out.phone == phone].values[0], out['ngt'][out.phone == phone].values[0]
 
 
-def choose_rigth_answer(positive_text, negative_text, client_speech, phone,
-                        end_call=False, timeout='auto', sfx_key=False):
+def choose_rigth_answer(positive_text, negative_text, client_speech, phone, timeout='auto', sfx_key=False):
     """
     функция решает как продолжить диалог в зависимости от того, положительно ли клиент ответил на вопрос или нет.
     если положительно, то задаётся следующий вопрос, в противном случае будет задан уточняющий вопрос.
@@ -448,24 +454,23 @@ def choose_rigth_answer(positive_text, negative_text, client_speech, phone,
     pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
 
     # if we find positive entity in client answer go to next stage
-    if pos:
+    if pos or (out['rpt_amnt'][out.phone == phone].values[0] >= 1 and not neg):
         if sfx_key:
             sufix = '_1'
         else:
             sufix = ''
+            set_to_0_rpt_amnt(phone=phone)
         twiml_xml = collect_2gathers_response(text=positive_text, phone=phone, sufix=sufix)
 
-    # if find negative  sometimes we have to end call sometimes ask specifying question
-    elif neg and end_call:
+    # if find negative  we have to end call
+    elif neg:
         set_convrs_key(phone=phone, key=2)
         twiml_xml = collect_end_conversation(negative_text)
 
-    elif neg:
-        twiml_xml = collect_2gathers_response(text=negative_text, sufix='_1', add_step=False,
-                                              phone=phone, timeout=timeout)
     # if find nothing reask current question
     else:
         # second time repeat current question
+        inc_rpt_amnt(phone=phone)
         twiml_xml = choose_repeat_qwe(phone=phone, else_text='could you repeat ' +
                                  ents.repeat_subj[out['stage'][out['phone'] == phone].values[0] - 1])
 
@@ -586,6 +591,22 @@ def set_num_calls(phone):
     out['num_calls'][out.phone == phone] += 1
 
 
+def inc_rpt_amnt(phone):
+    """
+    increase count of repeats to this number
+    """
+    global out
+    out['rpt_amnt'][out.phone == phone] += 1
+
+
+def set_to_0_rpt_amnt(phone):
+    """
+    set 0 count of repeats to this number
+    """
+    global out
+    out['rpt_amnt'][out.phone == phone] = 0
+
+
 @app.route('/set_urls/<url>')  # c798f811.ngrok.io --> url example
 def set_urls(url):
     """
@@ -675,7 +696,7 @@ def question1():
     set_convrs_key(phone, 1)
 
     # choose what twilio will say
-    return choose_rigth_answer(end_call=True, positive_text=phrases.first_stage,
+    return choose_rigth_answer(positive_text=phrases.first_stage,
                                phone=phone, client_speech=client_speech, negative_text=phrases.sorry_4_bothr)
 
 
@@ -700,7 +721,7 @@ def question2():
         txt = 'Can I confirm your vehicle registration number is '+str(out[out.phone == phone]['reg_num'].values[0])+'?'
 
     return choose_rigth_answer(client_speech=client_speech, negative_text=phrases.sorry_4_bothr, positive_text=txt,
-                               phone=phone, end_call=True, sfx_key=sfx)
+                               phone=phone, sfx_key=sfx)
 
 
 @app.route('/question3', methods=['POST'])
@@ -714,27 +735,26 @@ def question3():
     global out
 
     phone, client_speech = get_stage_values(request.form)
-
     pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
-
     nex_qwe = 'Can I confirm the mileage as ' + str(out['mileage'][out.phone == phone].values[0]) + '?'
 
-    if pos:
-        out['reg_num'][out['phone'] == phone] = ''.join(str(out['reg_num'][out['phone'] == phone].values[0]).split(' '))
-        twiml_xml = collect_2gathers_response(text=nex_qwe, phone=phone)
+    if pos or (out['rpt_amnt'][out.phone == phone].values[0] >= config.max_repeats and not neg):
+        out['reg_num'][out['phone'] == phone] = ''.join(str(out['reg_num'][out.phone == phone].values[0]).split(' '))
 
     elif neg:
         find_plate_out_serv(phone=phone)
-        twiml_xml = collect_2gathers_response(phone=phone, text=nex_qwe)
 
     else:
+        inc_rpt_amnt(phone=phone)
         twiml_xml = choose_repeat_qwe(phone=phone, else_text='could you repeat ' +
-                                 str(out['reg_num'][out['phone'] == phone].values[0]) + ' is your number?')
+                                      str(out['reg_num'][out['phone'] == phone].values[0]) + ' is your number?')
         return str(twiml_xml)
 
+    twiml_xml = collect_2gathers_response(phone=phone, text=nex_qwe)
     if out['mileage'][out['phone'] == phone].values[0] == 0:
         twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ml, phone=phone, add_step=True)
 
+    set_to_0_rpt_amnt(phone=phone)
     return str(twiml_xml)
 
 
@@ -756,13 +776,19 @@ def question3_1():
     found = find_plate_from_speech(client_speech=client_speech, phone=phone)
     next_qwe = 'Can I confirm the mileage as ' + str(out['mileage'][out.phone == phone].values[0]) + '?'
 
-    if found:
-        out[out.phone == phone]["again_key"] = True
+    if found or out['rpt_amnt'][out.phone == phone].values[0] >= config.max_repeats:
         twiml_xml = collect_2gathers_response(phone=phone, text=next_qwe)
-    else:
-        twiml_xml = choose_repeat_qwe(phone=phone, sufix='_1', else_text='could you repeat ' +
-                                 ents.repeat_subj[out['stage'][out['phone'] == phone].values[0] - 1])
 
+    else:
+        inc_rpt_amnt(phone=phone)
+        twiml_xml = choose_repeat_qwe(phone=phone, sufix='_1', else_text='could you repeat ' +
+                                      ents.repeat_subj[out['stage'][out['phone'] == phone].values[0] - 1])
+        return str(twiml_xml)
+
+    if out['mileage'][out['phone'] == phone].values[0] == 0:
+        twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ml, phone=phone, add_step=True)
+
+    set_to_0_rpt_amnt(phone=phone)
     return str(twiml_xml)
 
 
@@ -780,18 +806,21 @@ def question4():
 
     next_qwe = 'Can I just confirm you live in ' + str(out['city'][out.phone == phone].values[0]) + '?',
 
-    # при одобрении задаётся следующий вопрос    'Please dictate registration number of your car'
+    # при одобрении задаётся следующий вопрос
     if pos:
+        set_to_0_rpt_amnt(phone=phone)
         twiml_xml = check_city_is_nan(phone, next_qwe)
 
-    # при отрицании прошу ввести номер телефона
-    elif neg:
+    # при отрицании прошу ввести миляж
+    elif neg or out['rpt_amnt'][out.phone == phone].values[0] >= config.max_repeats:
+        set_to_0_rpt_amnt(phone=phone)
         twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ml, phone=phone)
 
     # если не нашел никакой реакции переспроси
     else:
+        inc_rpt_amnt(phone=phone)
         twiml_xml = choose_repeat_qwe(phone=phone, else_text='could you repeat ' +
-                                 str(out['mileage'][out['phone'] == phone].values[0]) + ' is your mileage?')
+                                      str(out['mileage'][out['phone'] == phone].values[0]) + ' is your mileage?')
 
     return str(twiml_xml)
 
@@ -841,25 +870,21 @@ def question5():
     """
 
     phone, client_speech = get_stage_values(request.form)
-
-    # проверка не задаём ли мы данный вопрос повторно (если да то вопросительная фраза другая)
-    if out['again_key'][out.phone == phone].values[0]:
-        ngt_txt = 'could you talk ' + subjects_of_stages[out['stage'][out.phone == phone].values[0] - 2] + ' again?'
-    else:
-        ngt_txt = 'Please dictate ' + subjects_of_stages[out['stage'][out.phone == phone].values[0] - 2]
-
+    ngt_txt = 'Please dictate ' + subjects_of_stages[out['stage'][out.phone == phone].values[0] - 2]
     pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
 
-    if pos:
+    if pos or (out['rpt_amnt'][out.phone == phone].values[0] >= config.max_repeats and not neg):
+        set_to_0_rpt_amnt(phone=phone)
         twiml_xml = collect_2gathers_response(text=phrases.fivth_stage, phone=phone)
 
     elif neg:
-        twiml_xml = collect_2gathers_response(text=ngt_txt, sufix='_1', add_step=False,
-                                              phone=phone, timeout='3')
+        set_to_0_rpt_amnt(phone=phone)
+        twiml_xml = collect_2gathers_response(text=ngt_txt, sufix='_1', add_step=False, phone=phone)
 
     else:
+        inc_rpt_amnt(phone=phone)
         twiml_xml = choose_repeat_qwe(phone=phone, else_text='could you repeat, do you live in ' +
-                                      str(out['city'][out.phone == phone].values[0]) + '?')
+                                                             str(out['city'][out.phone == phone].values[0]) + '?')
 
     return str(twiml_xml)
 
@@ -875,17 +900,15 @@ def question5_1():
     """
 
     global out
-    phone = request.form.get('To')
-    client_speech = recognize_audio(phone=phone, form=request.form)
-
+    phone, client_speech = get_stage_values(request.form)
     found = find_city(client_speech=client_speech, phone=phone)
-    next_qwe = 'Can I validate, you live in ' + str(out['city'][out.phone == phone].values[0]) + '?'
 
-    if found:
-        out[out.phone == phone]["again_key"] = True
-        twiml_xml = collect_2gathers_response(add_step=False, phone=phone, text=next_qwe)
+    if found or out['rpt_amnt'][out.phone == phone].values[0] >= config.max_repeats:
+        set_to_0_rpt_amnt(phone=phone)
+        twiml_xml = collect_2gathers_response(text=phrases.fivth_stage, phone=phone)
 
     else:
+        inc_rpt_amnt(phone=phone)
         twiml_xml = choose_repeat_qwe(phone=phone, sufix='_1', else_text='could you repeat ' +
                                       ents.repeat_subj[out['stage'][out['phone'] == phone].values[0] - 1])
 
@@ -905,7 +928,8 @@ def question6():
     pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
 
     # при одобрении задаётся следующий вопрос
-    if pos:
+    if pos or (out['rpt_amnt'][out.phone == phone].values[0] >= config.max_repeats and not neg):
+        set_to_0_rpt_amnt(phone=phone)
         out['phone_for_offer'][out.phone == phone] = phone
         twiml_xml = collect_2gathers_response(text=phrases.sixth_stage, phone=phone)
 
@@ -914,6 +938,7 @@ def question6():
         twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ph, phone=phone)
     # если не нашел никакой реакции переспроси
     else:
+        inc_rpt_amnt(phone=phone)
         twiml_xml = choose_repeat_qwe(phone=phone, else_text='could you repeat ' +
                                       ents.repeat_subj[out['stage'][out['phone'] == phone].values[0] - 1])
 
@@ -936,12 +961,18 @@ def question6_1():
     write_user_answer(text='dictate: ' + client_inp, phone=phone)
 
     if len(client_inp) == config.digits_per_phone:
-        out['phone_for_offer'][out.phone == phone] = "+" + client_inp
-        twiml_xml = collect_2gathers_response(text=phrases.sixth_stage, phone=phone)
+        out['phone_for_offer'][out.phone == phone] = "+44" + client_inp
+
+    elif out['rpt_amnt'][out.phone == phone].values[0] >= 1:
+        out['phone_for_offer'][out.phone == phone] = phone
 
     else:
+        inc_rpt_amnt(phone=phone)
         twiml_xml = collect_keybrd_response(text=phrases.nt_vld_input, phone=phone)
+        return str(twiml_xml)
 
+    set_to_0_rpt_amnt(phone=phone)
+    twiml_xml = collect_2gathers_response(text=phrases.sixth_stage, phone=phone)
     return str(twiml_xml)
 
 
@@ -965,13 +996,20 @@ def question7():
 
     # если найдено одно из допустимых значений сервисной истории --> следующий вопрос
     if found:
-        twiml_xml = collect_2gathers_response(text=phrases.seventh_stage, phone=phone)
-        set_convrs_key(phone, 3)
+        pass
+    elif out['rpt_amnt'][out.phone == phone].values[0] >= config.max_repeats:
+        out['serv_hist'][out.phone == phone] = ''
 
     # иначе вопрос задаётся повторно
     else:
+        inc_rpt_amnt(phone=phone)
         twiml_xml = choose_repeat_qwe(phone=phone, else_text='could you repeat ' +
                                       ents.repeat_subj[out['stage'][out['phone'] == phone].values[0] - 1])
+        return str(twiml_xml)
+
+    set_to_0_rpt_amnt(phone=phone)
+    twiml_xml = collect_2gathers_response(text=phrases.seventh_stage, phone=phone)
+    set_convrs_key(phone, 3)
 
     return str(twiml_xml)
 
@@ -1026,8 +1064,7 @@ def send_inf(phone):
     sending information about persons that end call
     """
     # drop unuseful inf
-    unsend_inf = config.unwanted_for_webform_inf
-    pers = out[out.phone == phone].drop(unsend_inf, axis=1)
+    pers = out[out.phone == phone].drop(config.unwanted_for_webform_inf, axis=1)
     # form json and send it
     pers = pers.to_dict('records')[0]
     requests.post(config.recive_url, json=pers)
@@ -1222,7 +1259,7 @@ def get_data():
 
         # adding fields necessary to innerDb to json
         for i in range(len(config.adding_filds)):
-            if i < 3:
+            if i < 4:
                 req[config.adding_filds[i]] = 0
             elif i < 8:
                 req[config.adding_filds[i]] = False
@@ -1297,7 +1334,7 @@ def filling_dict(req):
     """
     # adding fields necessary to innerDb to json
     for j in range(len(config.adding_filds)):
-        if j < 3:
+        if j < 4:
             req = add_field_to_dict(0, j, req)
 
         elif j < 8:
@@ -1372,7 +1409,8 @@ def index():
 @app.route('/restore')
 def restore_db():
     global out
-    out = pd.read_csv('Db.csv')
+    out = pd.read_csv('Db.csv', converters={"phone": str, 'phone for offer': str})
+    return 'success', 200
 
 
 @app.route('/set_db_form')
@@ -1389,7 +1427,8 @@ def set_db_form():
 @app.route('/set_db', methods=['POST'])
 def set_db():
     global out
-    out = pd.read_csv(request.files['ex'])
+    out = pd.read_csv(request.files['ex'], converters={"phone": str, 'phone for offer': str})
+    return 'success', 200
 
 
 @app.route('/ir')

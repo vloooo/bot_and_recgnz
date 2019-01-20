@@ -27,7 +27,7 @@ repeat_subj = [' is your car available?', 'are you interested?', 'registration n
                'the nearest city to you.', phrases.fivth_stage, phrases.sixth_stage]
 
 serv_hist = ['1', '2', '3', 'full', 'part', 'parts', 'missing', 'lost', 'miss', 'no', 'one', 'two', 'three', 'tree',
-             'haven\'t', 'to']
+             'haven\'t', 'to', 'nissan', 'meeting']
 
 serv_hist_kind = {'1': 'Full service history', 'full': 'Full service history', 'one': 'Full service history',
                   '2': 'Part service history', 'part': 'Part service history', 'parts': 'Part service history',
@@ -35,7 +35,8 @@ serv_hist_kind = {'1': 'Full service history', 'full': 'Full service history', '
                   '3': 'haven\'t service history', 'no': 'haven\'t service history', 'tree': 'haven\'t service history',
                   'miss': 'haven\'t service history', 'lost': 'haven\'t service history',
                   'missing': 'haven\'t service history', 'haven\'t': 'haven\'t service history',
-                  'three': 'haven\'t service history'}
+                  'three': 'haven\'t service history', 'nissan': 'haven\'t service history',
+                  'meeting': 'haven\'t service history'}
 
 cities = ['London', 'Birmingham', 'Leeds', 'Glasgow', 'Sheffield', 'Bradford', 'Liverpool', 'Edinburgh', 'Manchester',
           'Bristol', 'Kirklees', 'Fife', 'Wirral', 'North Lanarkshire', 'Wakefield', 'Cardiff', 'Dudley', 'Wigan',

@@ -41,7 +41,7 @@ client = Client(config.account_sid, config.auth_token)
 echo_url = config.echo_url
 start_url = config.start_url
 
-ngrok_url = config.qwestion_url
+qwe_url = config.qwestion_url
 nlp = spacy.load('en_core_web_md')
 app = Flask(__name__)  # работа с вебом
 
@@ -152,7 +152,7 @@ def collect_speech_gather(text, hints, phone_number, sufix='', timeout='auto'):
     if timeout != 'auto':
         timeout = int(timeout)
     stg = str(out[out.phone == phone_number]['stage'][0])
-    gather = Gather(speechTimeout=2, hints=hints, action=ngrok_url + stg + sufix, input='speech')
+    gather = Gather(speechTimeout=2, hints=hints, action=qwe_url + stg + sufix, input='speech')
     gather.say(text)
     return gather
 
@@ -166,7 +166,7 @@ def collect_redirect_speech(phone):
     response.say('Hi, I am phoning you again to talk about your car. Last time we stoped on ' +
                  subjects_of_stages[out['stage'][out.phone == phone][0] - 1])
 
-    response.redirect(ngrok_url + str(out['stage'][out.phone == phone][0]))
+    response.redirect(qwe_url + str(out['stage'][out.phone == phone][0]))
     return response.to_xml()
 
 
@@ -175,7 +175,7 @@ def collect_dgt_gather(text, phone, sufix=''):
 
     """
     stg = str(out[out.phone == phone]['stage'][0])
-    gather = Gather(input='dtmf', numDigits="10", timeout=7, action=ngrok_url + stg + sufix)
+    gather = Gather(input='dtmf', numDigits="10", timeout=7, action=qwe_url + stg + sufix)
     gather.say(text)
     return gather
 
@@ -716,8 +716,8 @@ def test_call():
     """
     twiml = collect_2gathers_response(text=phrases.greeting,
                                       hints=phrases.pst_hint, phone=config.phone_for_test, add_step=False)
-    client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=config.phone_for_test, from_=config.twilio_numbers,
-                        record=True)
+    client.calls.create(url=echo_url + urlencode({'Twiml': twiml}), to=config.phone_for_test,
+                        from_=config.twilio_numbers['Eng'])
 
 
 @app.route('/call_auto', methods=['GET', 'POST'])

@@ -2,12 +2,13 @@ lwr_time_lim = 8      # time when we don't want to call
 upr_time_lim = 20     #
 recall_day_step = 1  # how many days we wait to next call to client
 sleep_min = 3        # step between initiates call queue
-timeout = 3        # time of silence that twilio
+timeout = 2        # time of silence that twilio
+max_repeats = 2
 
-account_sid = 'ACf619e2ec98b61829ae5bf61ee745c29a'
-auth_token = '225f34810027794296c7bdfc5003fba5'
-twilio_numbers = {'Eng': '+16267689921', 'Sco': "+44S", 'Wel': '+44W', 'Irl': '+44I'}
-phone_for_test = '+380999051660'
+account_sid = 'AC37055b95719a9137796eafd2649b0c67'
+auth_token = 'aad05ed551b9eb7dc26865e5b129538e'
+twilio_numbers = {'Eng': '+16786615476', 'Sco': "+44S", 'Wel': '+44W', 'Irl': '+44I'}
+phone_for_test = '+380959293096'
 
 main_url = 'https://c798f811.ngrok.io/'
 recive_url = main_url + 'receiver'  # url to send collected clients inf
@@ -23,19 +24,19 @@ host = '0.0.0.0'
 port = 5000
 
 # fields that necessary to inner Db
-adding_filds = ['num_calls', 'call_day', 'cnvrs_key', 'pst', 'ngt', 'again_key', 'first_ques', 'repeat_qwe',
-                'stage', 'phone_for_offer', 'serv_hist', 'accept']
+adding_filds = ['num_calls', 'rpt_amnt', 'call_day', 'cnvrs_key', 'pst', 'ngt', 'first_ques', 'repeat_qwe', 'stage',
+                'phone_for_offer', 'serv_hist', 'accept']
 
 # all fields from innerDb
-flds = ['num_calls', 'call_day', 'cnvrs_key', 'pst', 'ngt', 'again_key', 'first_ques', 'repeat_qwe',
-        'stage', 'phone_for_offer', 'mileage', 'serv_hist', 'city', 'reg_num', 'phone', 'accept', 'img_url']
+flds = ['num_calls', 'call_day', 'cnvrs_key', 'pst', 'ngt', 'first_ques', 'repeat_qwe', 'rpt_amnt', 'stage',
+        'phone_for_offer', 'mileage', 'serv_hist', 'city', 'reg_num', 'phone', 'accept', 'img_url']
 
 # fields that don't saves for anltc.
-unwanted_inf = ['first_ques', 'pst', 'ngt', 'again_key', 'img_url', 'repeat_qwe']
+unwanted_inf = ['first_ques', 'pst', 'ngt', 'img_url', 'repeat_qwe', 'rpt_amnt']
 
 # fields that don't sends to web-form
-unwanted_for_webform_inf = ['first_ques', 'pst', 'ngt', 'cnvrs_key', 'num_calls', 'again_key', 'stage',
-                            'call_day', 'img_url', 'repeat_qwe']
+unwanted_for_webform_inf = ['first_ques', 'pst', 'ngt', 'cnvrs_key', 'num_calls', 'stage', 'rpt_amnt', 'call_day',
+                            'img_url', 'repeat_qwe']
 
 
 '''

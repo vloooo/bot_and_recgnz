@@ -3,11 +3,11 @@ upr_time_lim = 20     #
 recall_day_step = 1  # how many days we wait to next call to client
 sleep_min = 3        # step between initiates call queue
 timeout = 2        # time of silence that twilio
-max_repeats = 2
+max_repeats = 1
 
-account_sid = 'AC37055b95719a9137796eafd2649b0c67'
-auth_token = 'aad05ed551b9eb7dc26865e5b129538e'
-twilio_numbers = {'Eng': '+16786615476', 'Sco': "+44S", 'Wel': '+44W', 'Irl': '+44I'}
+account_sid = 'ACf5ca768f67a1da914a9074ce35834be0'
+auth_token = '4f3bcacd7c230d08c07eba3859100be3'
+twilio_numbers = {'Eng': '+15086227646', 'Sco': "+44S", 'Wel': '+44W', 'Irl': '+44I'}
 phone_for_test = '+380959293096'
 
 main_url = 'https://c798f811.ngrok.io/'

@@ -48,3 +48,4 @@ ur =['https://www.autotrader.co.uk/classified/advert/201901113839180?onesearchad
 #         except AttributeError:
 #             continue
 
+import requests

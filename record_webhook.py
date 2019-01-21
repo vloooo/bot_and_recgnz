@@ -25,7 +25,8 @@ import speech_recognition as sr
 from urllib.request import urlopen
 import cv2
 from collections import Counter
-
+import eventlet
+eventlet.monkey_patch(socket=True)
 
 # to number plate rcgn
 model = load_model('modelL2.h5')
@@ -63,17 +64,10 @@ this Db use phone like client unique identificator (if phones different clients 
  unexpected)
 """
 
-out = pd.DataFrame({"reg_num": ['AS 123 SD', None, None], "mileage": ['1500', None, None], "city": ['London', None, None],
- "phone": ["+380669631139", "+380959293096", "+3333333333333"], "phone_for_offer": [None, None, None],
- 'num_calls': [9, 0, 0], "serv_hist": [None, None, None], 'stage': [7, 3, 1],
- 'pst': [False, False, False], 'ngt': [False, False, False], 'cnvrs_key': [0, 1, 2], 'number_of_calls': [0, 0, 3],
- 'first_ques': [False, False, False], 'call_day': [0, 0, 0], 'accept': [None, None, None], 'img_url':
-     ['https://www.classicdriver.com/sites/default/files/styles/full_width_slider/public/article_images/v12_laf_laferrari_01.jpg?itok=oS1qvHEQ',
-         None, None], 'rpt_amnt': [0, 0, 0],  'repeat_qwe': [True, True, True]})
-# out = pd.DataFrame(
-#     {"reg_num": [''], "mileage": [10000], "city": [''], "phone": [''], "phone_for_offer": [''], 'num_calls': [9],
-#      "serv_hist": [''], 'stage': [1], 'pst': [True], 'ngt': [True], 'cnvrs_key': [3], 'rpt_amnt': [0],
-#      'first_ques': [False], 'call_day': [0], 'accept': [None], 'img_url': [''], 'repeat_qwe': [True]})
+out = pd.DataFrame(
+    {"reg_num": [''], "mileage": [10000], "city": [''], "phone": [''], "phone_for_offer": [''], "repeat_qwe": [True],
+     "serv_hist": [''], "stage": [1], "pst": [True], "ngt": [True], "cnvrs_key": [3], "rpt_amnt": [0], "call_day": [0],
+     "first_ques": [False], "accept": [None], "img_url": [''], "num_calls": [9]})
 
 # tokens for outer ALPR
 tokens = ['7eb82f1ed5e6ceeca6b26f8316b31717fde0bb25', 'f9e106e2c0a0c6a2493181fd724cdb7b89600af9',
@@ -313,7 +307,6 @@ def collect_twml_record(text, phone_number, rsp, sufix=''):
     rsp.say(text)
     rsp.record(finish_on_key='*', play_beep=False, timeout=config.timeout, action=qwe_url + stg + sufix,
                max_length=5)
-    #, trim='do-not-trim'
     return rsp
 
 
@@ -397,11 +390,11 @@ def check_for_pos_neg(text, phone):
     Params:
         text ==> (str) строка для проверки.
     """
+    s = time.time()
 
     global out
     out['pst'][out.phone == phone], out['ngt'][out.phone == phone] = (False, False)
     text = text.lower()
-    print(text)
 
     # проверка присутствует ли в фразе одобрение или отрицание
     find_entyties(text=text, case='pst', phone=phone)
@@ -483,7 +476,16 @@ def recognize_audio(phone, form):
     """
     # reading audio by url
     url = form.get('RecordingUrl')
-    data = io.BytesIO(urlopen(url).read())
+
+    req = None
+    with eventlet.Timeout(2, False):
+        req = requests.get(url).content
+        data = io.BytesIO(req)
+
+    if req is None:
+        write_user_answer(text='Long load', phone=phone)
+        print('L.l.')
+        return 'Long load'
 
     # prepare data to convenient format
     r = sr.Recognizer()
@@ -492,7 +494,14 @@ def recognize_audio(phone, form):
 
     # recognize audio
     try:
-        client_speech = r.recognize_google(audio_)
+        client_speech = None
+        with eventlet.Timeout(2.5, False):
+            client_speech = r.recognize_google(audio_)
+
+        if client_speech is None:
+            write_user_answer(text='Long rcgnz', phone=phone)
+            return 'Long rcgnz'
+
     except sr.UnknownValueError:
         client_speech = 'UnknownValueError'
     except sr.RequestError:
@@ -505,6 +514,7 @@ def recognize_audio(phone, form):
 
     # write client speech to personal file
     write_user_answer(text=client_speech, phone=phone)
+
     return client_speech
 
 
@@ -684,6 +694,16 @@ def set_twilio_params():
     return 'success', 200
 
 
+@app.route('/set_twilio_numbers', methods=['GET'])
+def set_twilio_numbers():
+    print(config.twilio_numbers)
+    req = request.args.to_dict()
+    for i in req.keys():
+        config.twilio_numbers[i] = req[i]
+    print(config.twilio_numbers)
+    return 'success', 200
+
+
 #                                                   question part
 ######################################################################################################################
 @app.route('/question1', methods=['POST'])
@@ -755,6 +775,7 @@ def question3():
         twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ml, phone=phone, add_step=True)
 
     set_to_0_rpt_amnt(phone=phone)
+
     return str(twiml_xml)
 
 
@@ -789,6 +810,7 @@ def question3_1():
         twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ml, phone=phone, add_step=True)
 
     set_to_0_rpt_amnt(phone=phone)
+
     return str(twiml_xml)
 
 
@@ -1042,7 +1064,7 @@ def question8():
 
 #                                                   call part
 #######################################################################################################################
-def del_person():
+def del_persons():
     """
     deleting records that have 2-3 convers key, adding them to history
     """
@@ -1129,11 +1151,11 @@ def call_auto():
             make_calls()
             time.sleep(config.sleep_min * 60)
         else:
-            del_person()
+            del_persons()
             if exel_updated:
                 exel_updated = False
                 parse_exel()
-            time.sleep(config.sleep_min * 2 * 60)
+            time.sleep(config.sleep_min * 10 * 60)
 
 
 @app.route('/make_calls', methods=['POST'])
@@ -1428,6 +1450,13 @@ def set_db_form():
 def set_db():
     global out
     out = pd.read_csv(request.files['ex'], converters={"phone": str, 'phone for offer': str})
+    return 'success', 200
+
+
+@app.route('/save_db', methods=['POST'])
+def save_db():
+    global out
+    out.to_csv('Db.csv', index=False)
     return 'success', 200
 
 

@@ -664,7 +664,7 @@ def set_sleep_min(sleep_min):
     """
     set new sleep_min (time beetwen queues of calls)
     """
-    config.sleep_min = sleep_min
+    config.sleep_min = int(sleep_min)
     return 'success', 200
 
 
@@ -772,7 +772,7 @@ def question3():
 
     twiml_xml = collect_2gathers_response(phone=phone, text=nex_qwe)
     if out['mileage'][out['phone'] == phone].values[0] == 0:
-        twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ml, phone=phone, add_step=True)
+        twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ml, phone=phone)
 
     set_to_0_rpt_amnt(phone=phone)
 
@@ -807,7 +807,7 @@ def question3_1():
         return str(twiml_xml)
 
     if out['mileage'][out['phone'] == phone].values[0] == 0:
-        twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ml, phone=phone, add_step=True)
+        twiml_xml = collect_keybrd_response(text=phrases.keybrd_inp_ml, phone=phone)
 
     set_to_0_rpt_amnt(phone=phone)
 
@@ -826,7 +826,7 @@ def question4():
     phone, client_speech = get_stage_values(form=request.form)
     pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
 
-    next_qwe = 'Can I just confirm you live in ' + str(out['city'][out.phone == phone].values[0]) + '?',
+    next_qwe = 'Can I just confirm you live in ' + str(out['city'][out.phone == phone].values[0]) + '?'
 
     # при одобрении задаётся следующий вопрос
     if pos:
@@ -865,7 +865,7 @@ def question4_1():
 
     out['mileage'][out.phone == phone] = client_inp
 
-    nex_qwe = 'Can I just confirm you live in ' + str(out['city'][out.phone == phone].values[0]) + '?',
+    nex_qwe = 'Can I just confirm you live in ' + str(out['city'][out.phone == phone].values[0]) + '?'
     twiml_xml = check_city_is_nan(phone, nex_qwe)
 
     return str(twiml_xml)
@@ -879,7 +879,7 @@ def check_city_is_nan(phone, txt):
         twiml_xml = collect_2gathers_response(text='Please dictate the nearest city to you.', sufix='_1', phone=phone)
     else:
         twiml_xml = collect_2gathers_response(text=txt, phone=phone)
-    return twiml_xml
+    return str(twiml_xml)
 
 
 @app.route('/question5', methods=['POST'])
@@ -1012,8 +1012,7 @@ def question7():
     if out['cnvrs_key'][out.phone == phone].values[0] == 1 and out['first_ques'][out.phone == phone].values[0]:
         found = True
     else:
-        phone = request.form.get('To')
-        client_speech = recognize_audio(phone=phone, form=request.form)
+        _, client_speech = get_stage_values(form=request.form)
         found = find_service_hist(client_speech, phone)
 
     # если найдено одно из допустимых значений сервисной истории --> следующий вопрос
@@ -1044,14 +1043,13 @@ def question8():
     """
     global out
 
-    phone = request.form.get('To')
-    client_speech = recognize_audio(phone=phone, form=request.form)
+    phone, client_speech = get_stage_values(form=request.form)
     pos, neg = get_pos_neg(client_speech=client_speech, phone=phone)
 
-    if pos:
-        out['accept'][out.phone == phone] = True
-    elif neg:
+    if neg:
         out['accept'][out.phone == phone] = False
+    else:
+        out['accept'][out.phone == phone] = True
 
     twiml_xml = collect_end_conversation(phrases.u_can_vld_it)
     send_inf(phone=phone)
@@ -1148,6 +1146,7 @@ def call_auto():
     while True:
         out.to_csv('Db.csv', index=False)
         if config.lwr_time_lim <= datetime.utcnow().hour < config.upr_time_lim:
+            print('ggg')
             make_calls()
             time.sleep(config.sleep_min * 60)
         else:
@@ -1163,7 +1162,7 @@ def make_calls():
     """
     initiate calls if have suitable records
     """
-    global quick_recall_numbers, exel_updated
+    global quick_recall_numbers, exel_updated, out
     # recall clients that didn't finish conversation
     num_calls = np.max([config.num_calls_per_time - quiq_recalls(), 2])
 
@@ -1208,6 +1207,10 @@ def make_calls():
             number_of_client = num_calls - number_of_client  # calculate number of new calls for this time
     else:
         # if we haven't candidates to call we start to parse exel
+        del_persons()
+        df = out[:0]
+        df = find_clients_with_2_cars(df)
+        out = pd.concat([out, df], ignore_index=True)
         if exel_updated:
             exel_updated = False
             parse_exel()
@@ -1315,7 +1318,7 @@ def parse_exel():
                                                                                     'Location': 'city',
                                                                                     'Featured Image': 'img_url'})
         # add + to phones
-        df['phone'] = '+44' + df['phone']
+        df['phone'] = '+' + df['phone']
 
         # delete United Kingdom from city names
         for city_name in df['city']:
@@ -1343,6 +1346,7 @@ def parse_exel():
 
         df = find_clients_with_2_cars(df=df)
         # add current exel data to innerDb
+
         out = pd.concat([out, df], ignore_index=True)
 
     # set number of available exels to handle to 0
@@ -1376,7 +1380,7 @@ def find_clients_with_2_cars(df):
     if client sell more than one car we add another all his records except one to archive,
     and get another one when handel first his record
     """
-    two_cars_clients = pd.read_csv('two_cars_clienet.csv', converters={"phone": str, 'phone for offer': str,
+    two_cars_clients = pd.read_csv('two_cars_client.csv', converters={"phone": str, 'phone for offer': str,
                                                                       'mileage': int})
 
     df = pd.concat([two_cars_clients, df], ignore_index=True)

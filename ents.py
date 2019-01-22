@@ -1,7 +1,7 @@
 import phrases
 
 ents = {
-    'pst': ["yes", "yeah", "exactly", "ok", "yeh", "yep", "correct", "affirmative", "okey", "nice", "right",
+    'pst': ["yes", "yeah", "exactly", "ok", "yeh", "yep", "correct", "affirmative", "okey", "nice", "right", "ua",
             "perfect", "great", "cool", "accept", "microwavable", "precisely", "available", "acceptable", "drivable"],
 
     'pst_1': ["you are right", "just so", "still available", "yes, it is", "ok thats great", "perfect, thanks",

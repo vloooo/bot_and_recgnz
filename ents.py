@@ -250,4 +250,3 @@ full_city_lst = ['Appleby-in-Westmorland', 'South Woodham Ferrers', 'Ashton-in-M
           'Selby', 'Soham', 'Stone', 'Thame', 'Thong', 'Tring', 'Truro', 'Wells', 'Wigan', 'Bath', 'Bude', 'Bury',
           'Clun', 'Deal', 'Diss', 'Eton', 'Hull', 'Hyde', 'Leek', 'Looe', 'Lydd', 'Ryde', 'Sale', 'Ware', 'Yarm',
           'Yate', 'York', 'Ely', 'Eye', 'Rye', 'Wem']
-

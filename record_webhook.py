@@ -22,6 +22,7 @@ from keras.models import load_model
 from keras.optimizers import RMSprop
 import io
 import speech_recognition as sr
+from selenium import webdriver
 from urllib.request import urlopen
 import cv2
 from collections import Counter
@@ -65,7 +66,7 @@ this Db use phone like client unique identificator (if phones different clients 
 """
 
 out = pd.DataFrame(
-    {"reg_num": [''], "mileage": [10000], "city": [''], "phone": [''], "phone_for_offer": [''], "repeat_qwe": [True],
+     {"reg_num": [''], "mileage": [10000], "city": [''], "phone": [''], "phone_for_offer": [''], "repeat_qwe": [True],
      "serv_hist": [''], "stage": [1], "pst": [True], "ngt": [True], "cnvrs_key": [3], "rpt_amnt": [0], "call_day": [0],
      "first_ques": [False], "accept": [None], "img_url": [''], "num_calls": [9]})
 
@@ -215,19 +216,45 @@ def find_plate_by_network(url, req, indx):
         if counter_for_break == 10:
             break
         try:
-            # parse site
-            soup = BeautifulSoup(urlopen(url), "lxml")
-            div = soup.find("div", {"class": "fpaImages__mainImage"})
-            imgs = div.find_all("img", {"class": "tracking-standard-link"})
+            # parse site PhantomJS('/usr/local/bin/phantomjs-2.1.1-linux-x86_64/bin/phantomjs')
+            driver = webdriver.Firefox()
+            driver.set_window_size(1000, 1000)
+            driver.get(url)
+            # try:
+            #     element = WebDriverWait(driver, 7).until(EC.presence_of_element_located((By.ID, "myDynamicElement")))
+            #
+            # except TimeoutException:
+            #     htmll = driver.page_source
+            #     soup = BeautifulSoup(htmll, 'lxml')
+            #
+            # finally:
+            #     htmll = driver.page_source
+            #     soup = BeautifulSoup(htmll, 'lxml')
+            #     driver.quit()
+            # driver.find_element_by_class_name("gallery__navigation navigation--right")
+
+            htmll = driver.page_source
+            soup = BeautifulSoup(htmll, 'lxml')
+            driver.quit()
+
+            div = soup.find("div", {"class": "gallery-thumbs"})
+
+            imgs = div.find_all("img")
             psb_plates = []
 
             # extract all image urls
             urls = []
             for i in range(len(imgs)):
                 try:
-                    urls.append(imgs[i]['data-src'])
+                    tmp = imgs[i]['data-src']
+                    size_index = tmp.find('w100h75')
+                    tmp = tmp[:size_index] + 'w720h540' + tmp[size_index+7:]
+                    urls.append(tmp)
                 except KeyError:
-                    urls.append(imgs[i]['src'])
+                    tmp = imgs[i]['src']
+                    size_index = tmp.find('w100h75')
+                    tmp = tmp[:size_index] + 'w720h540' + tmp[size_index+7:]
+                    urls.append(tmp)
 
             # to save the most likely image_url
             plate_with_url = {}
@@ -591,6 +618,9 @@ def set_convrs_key(phone, key):
     """
     global out
     out['cnvrs_key'][out.phone == phone] = key
+    if key == 2:
+        f = open('black_list.txt', 'a')
+        lin = f.write(' ' + phone)
 
 
 def set_num_calls(phone):
@@ -1210,6 +1240,8 @@ def make_calls():
         del_persons()
         df = out[:0]
         df = find_clients_with_2_cars(df)
+        df = filter_black_phones(df=df)
+
         out = pd.concat([out, df], ignore_index=True)
         if exel_updated:
             exel_updated = False
@@ -1331,10 +1363,10 @@ def parse_exel():
         # adding reg num to all cars recognized it from image
         req['reg_num'] = {}
         for j in range(len(req['phone'])):
-            try:
-                req['reg_num'][j] = find_plate_by_network(req['img_url'][j], req, j)
-            except:
-                req['reg_num'][j] = 'A A 0 0 A A A'
+            # try:
+            req['reg_num'][j] = find_plate_by_network(req['img_url'][j], req, j)
+            # except:
+            #     req['reg_num'][j] = 'A A 0 0 A A A'
 
         # adding fields necessary to innerDb to json
         req = filling_dict(req=req)
@@ -1345,12 +1377,31 @@ def parse_exel():
         df['mileage'] = df['mileage'].astype('int64', errors='ignore')
 
         df = find_clients_with_2_cars(df=df)
-        # add current exel data to innerDb
+        df = filter_black_phones(df=df)
 
+        # add current exel data to innerDb
         out = pd.concat([out, df], ignore_index=True)
 
     # set number of available exels to handle to 0
     exel_doc_counter = 0
+
+
+def filter_black_phones(df):
+
+    try:
+        f = open('black_list.txt', 'r')
+        black_list = f.readline()
+        black_list = black_list.split(' ')
+
+        for phn in black_list:
+            aspirant = df[df.phone == phn]
+            if aspirant.phone.count() > 0:
+                df = df.drop(df[df.phone == phn].index)
+
+    except FileNotFoundError:
+        pass
+
+    return df
 
 
 def filling_dict(req):
